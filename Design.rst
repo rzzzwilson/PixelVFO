@@ -85,14 +85,15 @@ values are 0 for the vfo_Up event.
 Event Queue
 -----------
 
-The touchscreen code is partly interrupt driven and a decision was made **not**
-to directly drive the VFO logic from interrupt code.  We do this by having the
-touchscreen code generate the events above and place them into an event queue.
+The touchscreen code is partly interrupt driven and a decision was made to
+**not** directly drive the VFO logic from interrupt code.  We do this by having
+the touchscreen code generate the events above and place them into an event
+queue.
 
 There will be two functions to push/pop events onto and off the queue::
 
     push_event(event);
-    event = pop_event();
+    VFOEvent *event = pop_event();
 
 Note that the touchscreen code will never **push** a *vfo_None* event onto the
 queue.  The *pop_event()* function will return a *vfo_None* event if the queue
