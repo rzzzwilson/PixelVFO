@@ -11,33 +11,47 @@
 #include "SPI.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_ILI9341.h"
-//#include <Fonts/FreeSerif9pt7b.h>
-//#include <Fonts/FreeMono9pt7b.h>
-//#include "Arial9pt7b.h"
-//#include "Arial12pt7b.h"
-#include "Arial22pt7b.h"
-//#include "Verdana21pt7b.h"
+#include <XPT2046_Touchscreen.h>
+#include "ArialBold24pt7b.h"
 
-// data/control and chip-select pins we are using
+// TFT display chip-select and data/control pins
 #define TFT_RST 8
 #define TFT_DC  9
 #define TFT_CS  10
 
-// Use hardware SPI (#13, #12, #11) and the above for CS/DC
+// touch chip-select and interrupt pins
+#define T_CS    4
+#define T_IRQ   3
+
+// Declare the display and touchscreen interfaces
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+//XPT2046_Touchscreen ts(T_CS, T_IRQ);
 
 #define NUM_F_CHAR    8
 
-#define FREQ_OFFSET_X   10
+#define FREQ_OFFSET_X   50
 #define FREQ_OFFSET_Y   40
 #define CHAR_WIDTH      25
-#define CHAR_HEIGHT     30
+#define CHAR_HEIGHT     32
 #define MHZ_OFFSET_X    (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
 
 #define SCREEN_FG     ILI9341_BLACK
 #define FREQ_BG       ILI9341_WHITE
 #define FREQ_FG       ILI9341_BLUE
+
+// static const uint8_t  PROGMEM myBitmap[] = {0xff...
+// tft.drawXBitmap(220, 160, myBitmap, 82, 77, BLACK); //drawXBitmap
  
+void touch_isr_up(void)
+{
+  Serial.println("touch_isr_up");
+}
+
+void touch_isr_down(void)
+{
+  Serial.println("touch_isr_down");
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -45,7 +59,7 @@ void setup()
 
   // get the display ready
   tft.begin();
-  tft.setFont(&Arial22pt7b);
+  tft.setFont(&ArialBold24pt7b);
 
   // start drawing things that don't change
   tft.fillScreen(SCREEN_FG);
@@ -54,8 +68,18 @@ void setup()
   tft.fillRect(0, 0, tft.width(), 50, FREQ_BG);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
-  tft.print("MHz");
+  tft.print("Hz");
+
+  // draw the 'thousands' markers
+  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
+  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
+
+  // draw dividing line
   tft.drawLine(0, 50, tft.width(), 50, ILI9341_RED);
+
+//  pinMode(T_IRQ, INPUT_PULLUP);
+//  attachInterrupt(digitalPinToInterrupt(T_IRQ), touch_isr_up, RISING);
+//  attachInterrupt(digitalPinToInterrupt(T_IRQ), touch_isr_down, FALLING);
 }
 
 bool change = true;
@@ -82,10 +106,8 @@ void draw_frequency(unsigned long freq)
   freq_to_buff(display_buff, freq);
   for (int i = NUM_F_CHAR-1; i >= 0; --i)
   {
-    Serial.printf(".fillRect(%d, %d, %d, %d)", x, FREQ_OFFSET_Y, CHAR_WIDTH, CHAR_HEIGHT);
     tft.fillRect(x-1, FREQ_OFFSET_Y-CHAR_HEIGHT-1, CHAR_WIDTH+2, CHAR_HEIGHT+2, FREQ_BG);
     tft.setCursor(x, FREQ_OFFSET_Y);
-    Serial.printf(", .setCursor(%d, %d)\n", x, FREQ_OFFSET_Y);
     tft.drawChar(x, FREQ_OFFSET_Y, display_buff[i], FREQ_FG, FREQ_BG, 1);
     x += CHAR_WIDTH;
   }
