@@ -1,4 +1,5 @@
 # stuff added for this project
+*.h
 .DS_Store
 *.ttf
 fontconvert*
