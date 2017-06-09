@@ -26,8 +26,8 @@ The menu will be shown after ...
 Touchscreen interrupts
 ----------------------
 
-The VFO touchscreen is drivem by a XPT2046 controller.  This chip is controlled
-via SPI and has these pins:
+The VFO touchscreen is driven by an XPT2046 driver chip.  This chip is
+controlled via SPI and has these pins:
 
 +---------+-------------------------------+
 | Pin     | Usage                         |
@@ -45,9 +45,9 @@ via SPI and has these pins:
 
 The code handling the touchscreen interface will use the standard pins
 to read the touchscreen status, but the interrupt pin will be used to
-handle the poen goinf DOWN and UP.
+handle the pen going DOWN and UP.
 
-The touchscreen code uses the SPI interface and the interrup pin to
+The touchscreen code uses the SPI interface and the interrupt pin to
 create logical events.  These events are held in a *VFOEvent* structure::
     
     typedef struct
