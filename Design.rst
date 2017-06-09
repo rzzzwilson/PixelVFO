@@ -4,7 +4,9 @@ PixelVFO Design
 The main hardware components for the VFO are:
 
 +-----------------+-------------------------------------------+
-| !Microcontroller | Controls the VFO.                         |
+| Component       | Usage                                     |
++=================+===========================================+
+| Microcontroller | Controls the VFO.                         |
 +-----------------+-------------------------------------------+
 | LCD display     | Display the VFO frequency as well as show |
 |                 | the menus, etc.                           |
