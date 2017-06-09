@@ -13,3 +13,6 @@ incremental rotary encoder.
 
 This project uses a 320x240 pixel TFT display with a touch screen to
 control the DDS-60 card.  This does away with the rotary encoder.
+
+The internal design notes are 
+`here <https://github.com/rzzzwilson/PixelVFO/blob/master/Design.rst>`_.
