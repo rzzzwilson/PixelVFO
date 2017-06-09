@@ -27,7 +27,7 @@ Touchscreen interrupts
 ----------------------
 
 The VFO touchscreen is driven by an XPT2046 driver chip.  This chip is
-controlled via SPI and has these pins:
+controlled via SPI and has these accessible lines:
 
 +---------+-------------------------------+
 | Pin     | Usage                         |
@@ -40,14 +40,14 @@ controlled via SPI and has these pins:
 +---------+-------------------------------+
 | T_DO    | SPI data out (MISO)           |
 +---------+-------------------------------+
-| T_IRQ   | interrupt, LOW means pen down |
+| T_IRQ   | pen, LOW means pen down       |
 +---------+-------------------------------+
 
 The code handling the touchscreen interface will use the standard pins
-to read the touchscreen status, but the interrupt pin will be used to
-handle the pen going DOWN and UP.
+to read the touchscreen status, but the T_IRQ pin will be used to
+handle the pen going DOWN and UP in an interrupt routine.
 
-The touchscreen code uses the SPI interface and the interrupt pin to
+The touchscreen code uses the SPI interface and the T_IRQ interrupt to
 create logical events.  These events are held in a *VFOEvent* structure::
     
     typedef struct
@@ -67,7 +67,8 @@ where the *Event* type is defined::
       vfo_Drag
     };
 
-Every event has associated X and Y coordinate values.
+Every event has associated X and Y coordinate values.  These coordinate
+values are 0 for the vfo_Up event.
 
 +---------------+-------------------------------------------+
 | Event Name    | Description                               |
