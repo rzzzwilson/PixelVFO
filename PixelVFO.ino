@@ -8,26 +8,31 @@
 // The menu system will be as for the DigitalVFO.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SPI.h"
-#include "Adafruit_GFX.h"
-#include "Adafruit_ILI9341.h"
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
+#include "PixelVFO.h"
 #include "ArialBold24pt7b.h"
+#include "events.h"
+#include "touch.h"
+
+// PixelVFO program name & version
+const char *ProgramName = "PixelVFO";
+const char *Version = "1.0";
+const char *MinorVersion = "1";
+const char *Callsign = "vk4fawr";
 
 // TFT display chip-select and data/control pins
 #define TFT_RST 8
 #define TFT_DC  9
 #define TFT_CS  10
 
-// touch chip-select and interrupt pins
+// pins for touchscreen and IRQ line
 #define T_CS    4
 #define T_IRQ   3
 
-// Declare the display and touchscreen interfaces
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
-//XPT2046_Touchscreen ts(T_CS, T_IRQ);
-
-#define NUM_F_CHAR    8
+#define NUM_F_CHAR      8
 
 #define FREQ_OFFSET_X   50
 #define FREQ_OFFSET_Y   40
@@ -35,37 +40,81 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define CHAR_HEIGHT     32
 #define MHZ_OFFSET_X    (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
 
-#define SCREEN_FG     ILI9341_BLACK
-#define FREQ_BG       ILI9341_WHITE
-#define FREQ_FG       ILI9341_BLUE
+#define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
+#define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
+
+#define SCREEN_BG       ILI9341_BLACK
+#define SCREEN_BG1      ILI9341_DARKGREY
+#define SCREEN_BG2      ILI9341_LIGHTGREY
+#define FREQ_FG         ILI9341_BLUE
+#define FREQ_BG         ILI9341_WHITE
+#define BOTTOM_BG       ILI9341_WHITE
 
 // static const uint8_t  PROGMEM myBitmap[] = {0xff...
 // tft.drawXBitmap(220, 160, myBitmap, 82, 77, BLACK); //drawXBitmap
- 
-void touch_isr_up(void)
+
+// Declare the display and touchscreen interfaces
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+
+bool change = true;
+unsigned long last_millis = 0;
+
+// store the VFO frequency here
+// the characters in 'freq_display' are in reverse order, MSB at right
+char freq_display[NUM_F_CHAR];   // digits of frequency, as binary values [0-9]
+unsigned long frequency;         // frequency as a long integer
+uint16_t char_x_offset[NUM_F_CHAR]; // x offset for start of each character on display
+
+
+//-----------------------------------------------
+// Abort the application giving as much information about the
+// problem as possible.
+//-----------------------------------------------
+
+void abort(const char *msg)
 {
-  Serial.println("touch_isr_up");
+  while (1);
 }
 
-void touch_isr_down(void)
-{
-  Serial.println("touch_isr_down");
-}
+//-----------------------------------------------
+// Initialize PixelVFO.
+//-----------------------------------------------
 
-void setup()
+void setup(void)
 {
+  // initialize the serial connection, announce we've started
   Serial.begin(115200);
-  Serial.println("PixelVFO"); 
+  Serial.printf("%s %s.%s\n", ProgramName, Version, MinorVersion); 
+
+  // set up the VFO frequency data structures
+  frequency = 1000000L;
+  freq_to_buff(freq_display, 1000000L);
+
+  // initialize 'char_x_offset' array
+  int x = FREQ_OFFSET_X;
+  for (int i = NUM_F_CHAR-1; i >= 0; --i)
+  {
+    char_x_offset[i] = x;
+    x += CHAR_WIDTH;
+  }
+
+  // kick off the SPI system
+  SPI.begin();
 
   // get the display ready
   tft.begin();
   tft.setFont(&ArialBold24pt7b);
 
+  // initialize the touch stuff
+  touch_setup(T_CS, T_IRQ);
+
   // start drawing things that don't change
-  tft.fillScreen(SCREEN_FG);
+  tft.fillScreen(SCREEN_BG);
   tft.setRotation(1);
   tft.setTextWrap(false);
   tft.fillRect(0, 0, tft.width(), 50, FREQ_BG);
+  tft.drawRect(0, 0, tft.width(), 50, SCREEN_BG1);
+  tft.drawRect(1, 1, tft.width()-2, 48, SCREEN_BG2);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
@@ -74,18 +123,22 @@ void setup()
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 
+  // fill in the remainder of the display
+  tft.fillRect(0, 50, tft.width(), tft.height() - 50, SCREEN_BG2);
   // draw dividing line
-  tft.drawLine(0, 50, tft.width(), 50, ILI9341_RED);
-
-//  pinMode(T_IRQ, INPUT_PULLUP);
-//  attachInterrupt(digitalPinToInterrupt(T_IRQ), touch_isr_up, RISING);
-//  attachInterrupt(digitalPinToInterrupt(T_IRQ), touch_isr_down, FALLING);
+//  tft.drawFastHLine(0, 50, tft.width(), ILI9341_RED);
+  
+  display_frequency();
 }
 
-bool change = true;
-unsigned long last_millis = 0;
-unsigned long frequency = 12345678;
-char display_buff[NUM_F_CHAR];
+//-----------------------------------------------
+// Fills the frequency char buffer from a given frequency.
+//
+//     buff  address of char buffer to fill
+//     freq  the frequency to put into the buffer
+//
+// Fills the buffer from the left with LSB first.
+//-----------------------------------------------
 
 void freq_to_buff(char *buff, unsigned long freq)
 {
@@ -99,295 +152,55 @@ void freq_to_buff(char *buff, unsigned long freq)
   }
 }
 
-void draw_frequency(unsigned long freq)
-{
-  int x = FREQ_OFFSET_X;
+//-----------------------------------------------
+// Draw the frequency byte buffer to the screen.
+// Updates all digits on the screen.  Skips leading zeros.
+//-----------------------------------------------
 
-  freq_to_buff(display_buff, freq);
+void display_frequency(void)
+{
+  bool leading_space = true;
+
   for (int i = NUM_F_CHAR-1; i >= 0; --i)
   {
-    tft.fillRect(x-1, FREQ_OFFSET_Y-CHAR_HEIGHT-1, CHAR_WIDTH+2, CHAR_HEIGHT+2, FREQ_BG);
-    tft.setCursor(x, FREQ_OFFSET_Y);
-    tft.drawChar(x, FREQ_OFFSET_Y, display_buff[i], FREQ_FG, FREQ_BG, 1);
-    x += CHAR_WIDTH;
+    tft.fillRect(freq_display[i]-1, FREQ_OFFSET_Y-CHAR_HEIGHT-1,
+                 CHAR_WIDTH+2, CHAR_HEIGHT+2, FREQ_BG);
+//    tft.setCursor(char_x_offset[i], FREQ_OFFSET_Y);
+    if ((freq_display[i] != '0') || !leading_space)
+    {
+      tft.drawChar(char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
+      leading_space = false;
+    }
   }
 }
+
+//-----------------------------------------------
+// Main event loop is here.
+//-----------------------------------------------
 
 void loop(void)
 {
-  if ((millis() - last_millis) > 1000)
+  // handle all events in the queue
+  while (true)
   {
-      change = true;
-      last_millis = millis();
-  }
-     
-  if (change)
-  {
-    draw_frequency(frequency);
-    frequency += 1;
+    // get next event and handle it
+    VFOEvent *event = event_pop();
 
-#if 0
-    tft.fillRect(0, 0, tft.width(), 50, FREQ_BG);
-    tft.setTextSize(1);
-    tft.setTextColor(FREQ_FG);
-    tft.setCursor(20, 40);
-    tft.printf("%08ld MHz", frequency);
-#endif
-  }
-  change = false;
-}
+    if (event->event == event_None)
+      break;
 
-unsigned long testLines(uint16_t color)
-{
-  unsigned long start, t;
-  int x1, y1, x2, y2;
-  int w = tft.width();
-  int h = tft.height();
+    Serial.printf("Event: %s\n", event2display(event));
 
-  tft.fillScreen(ILI9341_BLACK);
-  yield();
-  
-  x1 = y1 = 0;
-  y2 = h - 1;
-  start = micros();
-  
-  for (x2=0; x2<w; x2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  x2 = w - 1;
-  for (y2=0; y2<h; y2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  t = micros() - start; // fillScreen doesn't count against timing
-
-  yield();
-  tft.fillScreen(ILI9341_BLACK);
-  yield();
-
-  x1 = w - 1;
-  y1 = 0;
-  y2 = h - 1;
-  start = micros();
-  for (x2=0; x2<w; x2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  x2 = 0;
-  for (y2=0; y2<h; y2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  t += micros() - start;
-
-  yield();
-  tft.fillScreen(ILI9341_BLACK);
-  yield();
-
-  x1 = 0;
-  y1 = h - 1;
-  y2 = 0;
-  start = micros();
-  for (x2=0; x2<w; x2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  x2    = w - 1;
-  for (y2=0; y2<h; y2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  t += micros() - start;
-
-  yield();
-  tft.fillScreen(ILI9341_BLACK);
-  yield();
-
-  x1 = w - 1;
-  y1 = h - 1;
-  y2 = 0;
-  start = micros();
-  for (x2=0; x2<w; x2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-  x2 = 0;
-  for (y2=0; y2<h; y2+=6)
-    tft.drawLine(x1, y1, x2, y2, color);
-
-  yield();
-  return micros() - start;
-}
-
-unsigned long testFastLines(uint16_t color1, uint16_t color2)
-{
-  unsigned long start;
-  int x, y;
-  int w = tft.width();
-  int h = tft.height();
-
-  tft.fillScreen(ILI9341_BLACK);
-  start = micros();
-  
-  for (y=0; y<h; y+=5)
-    tft.drawFastHLine(0, y, w, color1);
-  for (x=0; x<w; x+=5)
-    tft.drawFastVLine(x, 0, h, color2);
-
-  return micros() - start;
-}
-
-unsigned long testRects(uint16_t color)
-{
-  unsigned long start;
-  int n, i, i2;
-  int cx = tft.width()  / 2;
-  int cy = tft.height() / 2;
-
-  tft.fillScreen(ILI9341_BLACK);
-  n = min(tft.width(), tft.height());
-  start = micros();
-  
-  for (i=2; i<n; i+=6)
-  {
-    i2 = i / 2;
-    tft.drawRect(cx-i2, cy-i2, i, i, color);
-  }
-
-  return micros() - start;
-}
-
-unsigned long testFilledRects(uint16_t color1, uint16_t color2)
-{
-  unsigned long start, t = 0;
-  int n, i, i2;
-  int cx = tft.width()  / 2 - 1;
-  int cy = tft.height() / 2 - 1;
-
-  tft.fillScreen(ILI9341_BLACK);
-  n = min(tft.width(), tft.height());
-  for (i=n; i>0; i-=6)
-  {
-    i2 = i / 2;
-    start = micros();
-    tft.fillRect(cx-i2, cy-i2, i, i, color1);
-    t += micros() - start;
-    // Outlines are not included in timing results
-    tft.drawRect(cx-i2, cy-i2, i, i, color2);
-    yield();
-  }
-
-  return t;
-}
-
-unsigned long testFilledCircles(uint8_t radius, uint16_t color)
-{
-  unsigned long start;
-  int x, y;
-  int w = tft.width();
-  int h = tft.height();
-  int r2 = radius * 2;
-
-  tft.fillScreen(ILI9341_BLACK);
-  start = micros();
-  for (x=radius; x<w; x+=r2)
-  {
-    for (y=radius; y<h; y+=r2)
+    switch (event->event)
     {
-      tft.fillCircle(x, y, radius, color);
+      case event_Down:
+        break;
+      case event_Up:
+        break;
+      case event_Drag:
+        break;
+      default:
+        abort("Unrecognized event!?");
     }
   }
-
-  return micros() - start;
-}
-
-unsigned long testCircles(uint8_t radius, uint16_t color)
-{
-  unsigned long start;
-  int x, y;
-  int r2 = radius * 2;
-  int w = tft.width()  + radius;
-  int h = tft.height() + radius;
-
-  // Screen is not cleared for this one -- this is
-  // intentional and does not affect the reported time.
-  start = micros();
-  for (x=0; x<w; x+=r2)
-  {
-    for (y=0; y<h; y+=r2)
-    {
-      tft.drawCircle(x, y, radius, color);
-    }
-  }
-
-  return micros() - start;
-}
-
-unsigned long testTriangles() {
-  unsigned long start;
-  int n, i;
-  int cx = tft.width()  / 2 - 1;
-  int cy = tft.height() / 2 - 1;
-
-  tft.fillScreen(ILI9341_BLACK);
-  n = min(cx, cy);
-  start = micros();
-  
-  for (i=0; i<n; i+=5)
-  {
-    tft.drawTriangle(cx    , cy - i, // peak
-                     cx - i, cy + i, // bottom left
-                     cx + i, cy + i, // bottom right
-                     tft.color565(i, i, i));
-  }
-
-  return micros() - start;
-}
-
-unsigned long testFilledTriangles()
-{
-  unsigned long start, t = 0;
-  int i;
-  int cx = tft.width()  / 2 - 1;
-  int cy = tft.height() / 2 - 1;
-
-  tft.fillScreen(ILI9341_BLACK);
-  start = micros();
-  for (i=min(cx,cy); i>10; i-=5)
-  {
-    start = micros();
-    tft.fillTriangle(cx, cy - i, cx - i, cy + i, cx + i, cy + i, tft.color565(0, i*10, i*10));
-    t += micros() - start;
-    tft.drawTriangle(cx, cy - i, cx - i, cy + i, cx + i, cy + i, tft.color565(i*10, i*10, 0));
-    yield();
-  }
-
-  return t;
-}
-
-unsigned long testRoundRects()
-{
-  unsigned long start;
-  int w, i, i2;
-  int cx = tft.width()  / 2 - 1;
-  int cy = tft.height() / 2 - 1;
-
-  tft.fillScreen(ILI9341_BLACK);
-  w = min(tft.width(), tft.height());
-  start = micros();
-  
-  for (i=0; i<w; i+=6)
-  {
-    i2 = i / 2;
-    tft.drawRoundRect(cx-i2, cy-i2, i, i, i/8, tft.color565(i, 0, 0));
-  }
-
-  return micros() - start;
-}
-
-unsigned long testFilledRoundRects()
-{
-  unsigned long start;
-  int i, i2;
-  int cx = tft.width()  / 2 - 1;
-  int cy = tft.height() / 2 - 1;
-
-  tft.fillScreen(ILI9341_BLACK);
-  start = micros();
-  
-  for (i=min(tft.width(), tft.height()); i>20; i-=6)
-  {
-    i2 = i / 2;
-    tft.fillRoundRect(cx-i2, cy-i2, i, i, i/8, tft.color565(0, i, 0));
-    yield();
-  }
-
-  return micros() - start;
 }
