@@ -6,7 +6,7 @@
 #include "events.h"
 
 //----------------------------------------
-// Function prototypes.
+// Function prototypes for touch.cpp.
 //----------------------------------------
 
 void touch_setup(int t_cs, int t_irq);

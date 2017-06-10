@@ -34,11 +34,12 @@ const char *Callsign = "vk4fawr";
 
 #define NUM_F_CHAR      8
 
-#define FREQ_OFFSET_X   50
-#define FREQ_OFFSET_Y   40
-#define CHAR_WIDTH      25
-#define CHAR_HEIGHT     32
-#define MHZ_OFFSET_X    (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
+#define DEPTH_FREQ_DISPLAY  50
+#define FREQ_OFFSET_X       50
+#define FREQ_OFFSET_Y       40
+#define CHAR_WIDTH          25
+#define CHAR_HEIGHT         32
+#define MHZ_OFFSET_X        (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
 
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 #define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
@@ -60,10 +61,10 @@ bool change = true;
 unsigned long last_millis = 0;
 
 // store the VFO frequency here
-// the characters in 'freq_display' are in reverse order, MSB at right
-char freq_display[NUM_F_CHAR];   // digits of frequency, as binary values [0-9]
-unsigned long frequency;         // frequency as a long integer
-uint16_t char_x_offset[NUM_F_CHAR]; // x offset for start of each character on display
+// the characters in 'freq_display' are stored MSB at left (index 0)
+char freq_display[NUM_F_CHAR];          // digits of frequency, as binary values [0-9]
+unsigned long frequency;                // frequency as a long integer
+uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
 
 
 //-----------------------------------------------
@@ -91,12 +92,24 @@ void setup(void)
   freq_to_buff(freq_display, 1000000L);
 
   // initialize 'char_x_offset' array
-  int x = FREQ_OFFSET_X;
-  for (int i = NUM_F_CHAR-1; i >= 0; --i)
+  int x_offset = FREQ_OFFSET_X;
+  for (int i = 0; i < NUM_F_CHAR; ++i)
   {
-    char_x_offset[i] = x;
-    x += CHAR_WIDTH;
+    char_x_offset[i] = x_offset;
+    x_offset += CHAR_WIDTH;
   }
+
+  Serial.printf("char_x_offset: ");
+  for (int i = 0; i < NUM_F_CHAR; ++i)
+  {
+    Serial.printf("%6d", i);
+  }
+  Serial.printf("\n                ");
+  for (int i = 0; i < NUM_F_CHAR; ++i)
+  {
+    Serial.printf("%6d", char_x_offset[i]);
+  }
+  Serial.printf("\n");
 
   // kick off the SPI system
   SPI.begin();
@@ -112,9 +125,9 @@ void setup(void)
   tft.fillScreen(SCREEN_BG);
   tft.setRotation(1);
   tft.setTextWrap(false);
-  tft.fillRect(0, 0, tft.width(), 50, FREQ_BG);
-  tft.drawRect(0, 0, tft.width(), 50, SCREEN_BG1);
-  tft.drawRect(1, 1, tft.width()-2, 48, SCREEN_BG2);
+  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
+  tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
@@ -124,9 +137,10 @@ void setup(void)
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 
   // fill in the remainder of the display
-  tft.fillRect(0, 50, tft.width(), tft.height() - 50, SCREEN_BG2);
+  tft.fillRect(0, DEPTH_FREQ_DISPLAY,
+               tft.width(), tft.height() - DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   // draw dividing line
-//  tft.drawFastHLine(0, 50, tft.width(), ILI9341_RED);
+//  tft.drawFastHLine(0, DEPTH_FREQ_DISPLAY, tft.width(), ILI9341_RED);
   
   display_frequency();
 }
@@ -137,14 +151,14 @@ void setup(void)
 //     buff  address of char buffer to fill
 //     freq  the frequency to put into the buffer
 //
-// Fills the buffer from the left with LSB first.
+// Fills the buffer from the left with MSB first.
 //-----------------------------------------------
 
 void freq_to_buff(char *buff, unsigned long freq)
 {
   int rem;
 
-  for (int i = 0; i < NUM_F_CHAR; ++i)
+  for (int i = NUM_F_CHAR - 1; i; --i)
   {
     rem = freq % 10;
     freq = freq / 10;
@@ -161,11 +175,10 @@ void display_frequency(void)
 {
   bool leading_space = true;
 
-  for (int i = NUM_F_CHAR-1; i >= 0; --i)
+  for (int i = 0; i < NUM_F_CHAR; ++i)
   {
     tft.fillRect(freq_display[i]-1, FREQ_OFFSET_Y-CHAR_HEIGHT-1,
                  CHAR_WIDTH+2, CHAR_HEIGHT+2, FREQ_BG);
-//    tft.setCursor(char_x_offset[i], FREQ_OFFSET_Y);
     if ((freq_display[i] != '0') || !leading_space)
     {
       tft.drawChar(char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
@@ -191,9 +204,27 @@ void loop(void)
 
     Serial.printf("Event: %s\n", event2display(event));
 
+    uint16_t x = event->x;
+    uint16_t y = event->y;
+    
     switch (event->event)
     {
       case event_Down:
+        // see if DOWN is on a VFO frequency digit
+        Serial.printf("y=%d, DEPTH_FREQ_DISPLAY=%d\n", y, DEPTH_FREQ_DISPLAY);
+        if (y < DEPTH_FREQ_DISPLAY)
+        {
+          for (int i = 0; i < NUM_F_CHAR; ++i)
+          {
+            Serial.printf("Comparing %d against %d, %d\n", x, char_x_offset[i], char_x_offset[i+1]);
+            if ((x > char_x_offset[i]) && (x < char_x_offset[i+1]))
+            {
+              // within char 'bucket'
+              Serial.printf("Selected char offset %d\n", i);
+              break;
+            }
+          }
+        }
         break;
       case event_Up:
         break;

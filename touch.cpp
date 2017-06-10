@@ -1,8 +1,29 @@
+////////////////////////////////////////////////////////////////////////////////
+// Code to handle touch events for PixelVFO.
+//
+// Screen is assumed to be 240x320.
+//
+// The raw data is presented to the system event queue as one of:
+//     event_Down
+//     event_Up
+//     event_Drag
+// All events above have associated X and Y coordinates.
+////////////////////////////////////////////////////////////////////////////////
+
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 #include "events.h"
 #include "touch.h"
 #include "PixelVFO.h"
+
+// calibration data
+#define TS_MINX 220
+#define TS_MINY 340
+#define TS_MAXX 3780
+#define TS_MAXY 3850
+
+#define MAX_X   320
+#define MAX_Y   240
 
 #define SPI_SETTING         SPISettings(2000000, MSBFIRST, SPI_MODE0)
 
@@ -18,10 +39,12 @@
 //-----
 
 static uint32_t volatile msraw = 0x80000000;
-static int16_t volatile last_xraw = 32000;
-static int16_t volatile last_yraw = 32000;
+static uint16_t volatile last_xcalib = 64000;
+static uint16_t volatile last_ycalib = 64000;
 static bool volatile first_down = true;
 static bool volatile PenDown = false;
+static uint16_t volatile x_calib = 0;
+static uint16_t volatile y_calib = 0;
 
 static int cs_pin = -1;
 static int irq_pin = -1;
@@ -38,11 +61,9 @@ static IntervalTimer myTimer;
 
 static void touch_read(void)
 {
-  int16_t xraw;
-  int16_t yraw;
+  uint16_t xraw;
+  uint16_t yraw;
 
-  Serial.printf("touch_read: PenDown=%d\n", PenDown);
-  
   // if finger not down, do nothing
   if (! PenDown) return;
 
@@ -50,33 +71,38 @@ static void touch_read(void)
   SPI.beginTransaction(SPI_SETTING);
   digitalWrite(cs_pin, LOW);      // enable comms with slave
 
-  // we seem to read a few times
-  SPI.transfer16(0x91 /* X */);
+  SPI.transfer16(0x91 /* X */);   // we seem to read a few times
   SPI.transfer16(0xD1 /* Y */);
   SPI.transfer16(0x91 /* X */);
   SPI.transfer16(0xD1 /* Y */);
   SPI.transfer16(0x91 /* X */);
   xraw = SPI.transfer16(0xD0 /* Y */) >> 3;
   yraw = SPI.transfer16(0) >> 3;
-  
+
   digitalWrite(cs_pin, HIGH);     // finished comms with slave
   SPI.endTransaction();
   
+  // convert to calibrated X and Y
+  x_calib = ((xraw - TS_MINX) * MAX_X) / (TS_MAXX - TS_MINX);
+  Serial.printf("xraw=%d, x_calib=%d\n", xraw, x_calib);
+  y_calib = ((yraw - TS_MINY) * MAX_Y) / (TS_MAXY - TS_MINY);
+  Serial.printf("yraw=%d, y_calib=%d\n", yraw, y_calib);
+  
   // push event if change is big enough
-  if (PenDown && ((abs(xraw - last_xraw) > MOVE_DELTA) ||
-                    (abs(yraw - last_yraw) > MOVE_DELTA)))
+  if (PenDown && ((abs(x_calib - last_xcalib) > MOVE_DELTA) ||
+                    (abs(y_calib - last_ycalib) > MOVE_DELTA)))
   {
-    last_xraw = xraw;
-    last_yraw = yraw;
+    last_xcalib = x_calib;
+    last_ycalib = y_calib;
 
     if (first_down)
     {
-      event_push(event_Down, last_xraw, last_yraw);
+      event_push(event_Down, last_xcalib, last_ycalib);
       first_down = false;
     }
     else
     {
-      event_push(event_Drag, last_xraw, last_yraw);
+      event_push(event_Drag, last_xcalib, last_ycalib);
     }
   }
 }
@@ -90,8 +116,6 @@ static void touch_read(void)
 
 static void touch_irq(void)
 {
-  Serial.printf("touch_irq");
-  
   uint32_t now = millis();
 
   // ignore interrupt if too quick
@@ -106,7 +130,7 @@ static void touch_irq(void)
   else
   { // pen UP
     PenDown = false;
-    event_push(event_Up, last_xraw, last_yraw);
+    event_push(event_Up, last_xcalib, last_ycalib);
     first_down = true;
   }
 }
@@ -117,8 +141,6 @@ static void touch_irq(void)
 
 void touch_setup(int t_cs, int t_irq)
 {
-  Serial.printf("touch_setup, t_cs=%d, t_irq=%d\n", t_cs, t_irq);
-  
   // save the pins we are going to use
   cs_pin = t_cs;
   irq_pin = t_irq;

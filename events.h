@@ -5,7 +5,7 @@
 // An event queue system for PixelVFO.
 ////////////////////////////////////////////////////////////////////////////////
 
-// define the VFOevents
+// define the types VFOevents
 enum Event
 {
   event_None,
@@ -18,8 +18,8 @@ enum Event
 typedef struct
 {
   Event event;    // type of event
-  int x;          // X coord for the event
-  int y;          // Y coord for the event
+  uint16_t x;     // X coord for the event
+  uint16_t y;     // Y coord for the event
 } VFOEvent;
 
 // event functions
