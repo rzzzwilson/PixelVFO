@@ -67,8 +67,7 @@ where the *Event* type is defined::
       vfo_Drag
     };
 
-Every event has associated X and Y coordinate values.  These coordinate
-values are 0 for the vfo_Up event.
+Every event has associated X and Y coordinate values.
 
 +---------------+-------------------------------------------+
 | Event Name    | Description                               |
