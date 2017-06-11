@@ -49,6 +49,9 @@ static uint16_t volatile y_calib = 0;
 static int cs_pin = -1;
 static int irq_pin = -1;
 
+static int width = 0;
+static int height = 0;
+
 // Create an IntervalTimer object 
 static IntervalTimer myTimer;
 
@@ -84,9 +87,11 @@ static void touch_read(void)
   
   // convert to calibrated X and Y
   x_calib = ((xraw - TS_MINX) * MAX_X) / (TS_MAXX - TS_MINX);
-  Serial.printf("xraw=%d, x_calib=%d\n", xraw, x_calib);
   y_calib = ((yraw - TS_MINY) * MAX_Y) / (TS_MAXY - TS_MINY);
-  Serial.printf("yraw=%d, y_calib=%d\n", yraw, y_calib);
+  if (x_calib < 0) x_calib = 0;
+  if (x_calib > MAX_X) x_calib = MAX_X;
+  if (y_calib < 0) y_calib = 0;
+  if (y_calib > MAX_Y) y_calib = MAX_Y;
   
   // push event if change is big enough
   if (PenDown && ((abs(x_calib - last_xcalib) > MOVE_DELTA) ||
@@ -105,6 +110,23 @@ static void touch_read(void)
       event_push(event_Drag, last_xcalib, last_ycalib);
     }
   }
+}
+
+//----------------------------------------
+// Set the touchscreen rotation.
+//
+//     rot  0 - default, portrait
+//          1 - rotated 90 degrees, landscape
+//          2 - rotated 180 degrees, portrait
+//          3 - rotated 270 degrees, landscape
+//
+// Matches the orientation set for the TFT display.
+//----------------------------------------
+
+void touch_setRotation(int rot)
+{
+//  rotation = rot % 4;
+//  Serial.printf("Touchscreen rotation set to %d\n", rotation);
 }
 
 //----------------------------------------
@@ -139,7 +161,7 @@ static void touch_irq(void)
 // Initialize the touch system.
 //----------------------------------------
 
-void touch_setup(int t_cs, int t_irq)
+void touch_setup(int t_cs, int t_irq, int w, int h)
 {
   // save the pins we are going to use
   cs_pin = t_cs;
@@ -153,6 +175,8 @@ void touch_setup(int t_cs, int t_irq)
   // initiaize some state
   PenDown = false;
   first_down = true;
+  width = w;
+  height = h;
 
   // link the irq_pin pint to it's interrupt handler
   attachInterrupt(digitalPinToInterrupt(t_irq), touch_irq, CHANGE);

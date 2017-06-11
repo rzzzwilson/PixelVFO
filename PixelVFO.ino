@@ -14,8 +14,8 @@
 #include <XPT2046_Touchscreen.h>
 #include "PixelVFO.h"
 #include "ArialBold24pt7b.h"
-#include "VfoEvents.h"
-#include "TouchScreen.h"
+#include "events.h"
+#include "touch.h"
 
 // PixelVFO program name & version
 const char *ProgramName = "PixelVFO";
@@ -69,9 +69,6 @@ char freq_display[NUM_F_CHAR];          // digits of frequency, as binary values
 unsigned long frequency;                // frequency as a long integer
 uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
 
-VfoEvents event_queue = VfoEvents(EVENT_QUEUE_LEN);
-TouchScreen touch = TouchScreen(T_CS, T_IRQ, event_queue);
-
 
 //-----------------------------------------------
 // Abort the application giving as much information about the
@@ -123,14 +120,13 @@ void setup(void)
   // get the display ready
   tft.begin();
   tft.setFont(&ArialBold24pt7b);
+  Serial.printf("tft rot 0: width()=%d, height()=%d\n", tft.width(), tft.height());
   tft.setRotation(1);
-
-  // prepare the events system
-//  event_queue = VfoEvents(EVENT_QUEUE_LEN);
+  Serial.printf("tft rot 1: width()=%d, height()=%d\n", tft.width(), tft.height());
 
   // initialize the touch stuff
-//  touch = TouchScreen(T_CS, T_IRQ, event_queue);
-//  touch_setup(T_CS, T_IRQ, event_queue);
+  touch_setup(T_CS, T_IRQ, tft.width(), tft.height());
+//  touch_setRotation(1);
 
   // start drawing things that don't change
   tft.fillScreen(SCREEN_BG2);
@@ -202,12 +198,12 @@ void loop(void)
   while (true)
   {
     // get next event and handle it
-    VFOEvent *event = event_queue.pop();
+    VFOEvent *event = event_pop();
 
     if (event->event == event_None)
       break;
 
-    Serial.printf("Event: %s\n", event_queue.display(event));
+    Serial.printf("Event: %s\n", event2display(event));
 
     uint16_t x = event->x;
     uint16_t y = event->y;
@@ -216,12 +212,11 @@ void loop(void)
     {
       case event_Down:
         // see if DOWN is on a VFO frequency digit
-        Serial.printf("y=%d, DEPTH_FREQ_DISPLAY=%d\n", y, DEPTH_FREQ_DISPLAY);
-        if (y < DEPTH_FREQ_DISPLAY)
+        if (y < DEPTH_FREQ_DISPLAY + 30)    // a bit of 'slop' allowed
         {
           for (int i = 0; i < NUM_F_CHAR; ++i)
           {
-            Serial.printf("Comparing %d against %d, %d\n", x, char_x_offset[i], char_x_offset[i+1]);
+//            Serial.printf("Comparing %d against %d, %d\n", x, char_x_offset[i], char_x_offset[i+1]);
             if ((x > char_x_offset[i]) && (x < char_x_offset[i+1]))
             {
               // within char 'bucket'

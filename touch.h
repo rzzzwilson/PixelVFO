@@ -9,6 +9,7 @@
 // Function prototypes for touch.cpp.
 //----------------------------------------
 
-void touch_setup(int t_cs, int t_irq);
+void touch_setup(int t_cs, int t_irq, int w, int h);
+void touch_setRotation(int rot);
 
 #endif
