@@ -14,14 +14,17 @@
 #include <XPT2046_Touchscreen.h>
 #include "PixelVFO.h"
 #include "ArialBold24pt7b.h"
-#include "events.h"
-#include "touch.h"
+#include "VfoEvents.h"
+#include "TouchScreen.h"
 
 // PixelVFO program name & version
 const char *ProgramName = "PixelVFO";
 const char *Version = "1.0";
 const char *MinorVersion = "1";
 const char *Callsign = "vk4fawr";
+
+// the depth of the event queue
+#define EVENT_QUEUE_LEN 20
 
 // TFT display chip-select and data/control pins
 #define TFT_RST 8
@@ -65,6 +68,9 @@ unsigned long last_millis = 0;
 char freq_display[NUM_F_CHAR];          // digits of frequency, as binary values [0-9]
 unsigned long frequency;                // frequency as a long integer
 uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
+
+VfoEvents event_queue = VfoEvents(EVENT_QUEUE_LEN);
+TouchScreen touch = TouchScreen(T_CS, T_IRQ, event_queue);
 
 
 //-----------------------------------------------
@@ -119,8 +125,12 @@ void setup(void)
   tft.setFont(&ArialBold24pt7b);
   tft.setRotation(1);
 
+  // prepare the events system
+//  event_queue = VfoEvents(EVENT_QUEUE_LEN);
+
   // initialize the touch stuff
-  touch_setup(T_CS, T_IRQ);
+//  touch = TouchScreen(T_CS, T_IRQ, event_queue);
+//  touch_setup(T_CS, T_IRQ, event_queue);
 
   // start drawing things that don't change
   tft.fillScreen(SCREEN_BG2);
@@ -192,12 +202,12 @@ void loop(void)
   while (true)
   {
     // get next event and handle it
-    VFOEvent *event = event_pop();
+    VFOEvent *event = event_queue.pop();
 
     if (event->event == event_None)
       break;
 
-    Serial.printf("Event: %s\n", event2display(event));
+    Serial.printf("Event: %s\n", event_queue.display(event));
 
     uint16_t x = event->x;
     uint16_t y = event->y;
