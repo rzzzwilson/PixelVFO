@@ -117,13 +117,13 @@ void setup(void)
   // get the display ready
   tft.begin();
   tft.setFont(&ArialBold24pt7b);
+  tft.setRotation(1);
 
   // initialize the touch stuff
   touch_setup(T_CS, T_IRQ);
 
   // start drawing things that don't change
-  tft.fillScreen(SCREEN_BG);
-  tft.setRotation(1);
+  tft.fillScreen(SCREEN_BG2);
   tft.setTextWrap(false);
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
   tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
@@ -136,12 +136,7 @@ void setup(void)
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 
-  // fill in the remainder of the display
-  tft.fillRect(0, DEPTH_FREQ_DISPLAY,
-               tft.width(), tft.height() - DEPTH_FREQ_DISPLAY, SCREEN_BG2);
-  // draw dividing line
-//  tft.drawFastHLine(0, DEPTH_FREQ_DISPLAY, tft.width(), ILI9341_RED);
-  
+  // show the frequency
   display_frequency();
 }
 
@@ -158,7 +153,7 @@ void freq_to_buff(char *buff, unsigned long freq)
 {
   int rem;
 
-  for (int i = NUM_F_CHAR - 1; i; --i)
+  for (int i = NUM_F_CHAR - 1; i >= 0; --i)
   {
     rem = freq % 10;
     freq = freq / 10;
