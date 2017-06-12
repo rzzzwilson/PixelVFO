@@ -32,10 +32,10 @@ const char *Callsign = "vk4fawr";
 #define TFT_CS  10
 
 // pins for touchscreen and IRQ line
-#define T_CS    4
-#define T_IRQ   3
+#define T_CS                4
+#define T_IRQ               3
 
-#define NUM_F_CHAR      8
+#define NUM_F_CHAR          8
 
 #define DEPTH_FREQ_DISPLAY  50
 #define FREQ_OFFSET_X       50
@@ -47,12 +47,13 @@ const char *Callsign = "vk4fawr";
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 #define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
 
-#define SCREEN_BG       ILI9341_BLACK
-#define SCREEN_BG1      ILI9341_DARKGREY
-#define SCREEN_BG2      ILI9341_LIGHTGREY
-#define FREQ_FG         ILI9341_BLUE
-#define FREQ_BG         ILI9341_WHITE
-#define BOTTOM_BG       ILI9341_WHITE
+#define SCREEN_BG           ILI9341_BLACK
+#define SCREEN_BG3          ILI9341_LIGHTGREY
+#define SCREEN_BG2          ILI9341_DARKGREY
+#define SCREEN_BG1          ILI9341_BLACK
+#define FREQ_FG             ILI9341_BLUE
+#define FREQ_BG             ILI9341_WHITE
+#define BOTTOM_BG           ILI9341_WHITE
 
 // static const uint8_t  PROGMEM myBitmap[] = {0xff...
 // tft.drawXBitmap(220, 160, myBitmap, 82, 77, BLACK); //drawXBitmap
@@ -120,13 +121,11 @@ void setup(void)
   // get the display ready
   tft.begin();
   tft.setFont(&ArialBold24pt7b);
-  Serial.printf("tft rot 0: width()=%d, height()=%d\n", tft.width(), tft.height());
   tft.setRotation(1);
-  Serial.printf("tft rot 1: width()=%d, height()=%d\n", tft.width(), tft.height());
 
   // initialize the touch stuff
   touch_setup(T_CS, T_IRQ, tft.width(), tft.height());
-//  touch_setRotation(1);
+  touch_setRotation(1);
 
   // start drawing things that don't change
   tft.fillScreen(SCREEN_BG2);
@@ -134,6 +133,7 @@ void setup(void)
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
   tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
   tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
+  tft.drawRect(2, 2, tft.width()-4, DEPTH_FREQ_DISPLAY-4, SCREEN_BG3);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
@@ -229,6 +229,7 @@ void loop(void)
       case event_Up:
         break;
       case event_Drag:
+        tft.fillCircle(x, y, 3, ILI9341_RED);
         break;
       default:
         abort("Unrecognized event!?");

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Code to handle touch events for PixelVFO.
 //
-// Screen is assumed to be 240x320.
+// Screen is assumed to be 320x240.
 //
 // The raw data is presented to the system event queue as one of:
 //     event_Down
@@ -16,11 +16,11 @@
 #include "touch.h"
 #include "PixelVFO.h"
 
-// calibration data
-#define TS_MINX 220
-#define TS_MINY 340
-#define TS_MAXX 3780
-#define TS_MAXY 3850
+// touchscreen calibration data
+#define TS_MINX 336
+#define TS_MINY 221
+#define TS_MAXX 3824
+#define TS_MAXY 3935
 
 #define MAX_X   320
 #define MAX_Y   240
@@ -51,6 +51,8 @@ static int irq_pin = -1;
 
 static int width = 0;
 static int height = 0;
+
+static int rotation = 0;
 
 // Create an IntervalTimer object 
 static IntervalTimer myTimer;
@@ -125,8 +127,7 @@ static void touch_read(void)
 
 void touch_setRotation(int rot)
 {
-//  rotation = rot % 4;
-//  Serial.printf("Touchscreen rotation set to %d\n", rotation);
+  rotation = rot % 4;
 }
 
 //----------------------------------------
@@ -168,9 +169,10 @@ void touch_setup(int t_cs, int t_irq, int w, int h)
   irq_pin = t_irq;
 
   // initialize the pins, mode and level
-  pinMode(t_cs, OUTPUT);
-  digitalWrite(t_cs, HIGH);
-  pinMode(t_irq, INPUT_PULLUP);
+  pinMode(cs_pin, OUTPUT);
+  digitalWrite(cs_pin, HIGH);
+  pinMode(irq_pin, INPUT_PULLUP);
+  Serial.printf("touch CS=%d, IRQ=%d\n", cs_pin, irq_pin);
 
   // initiaize some state
   PenDown = false;
@@ -180,7 +182,7 @@ void touch_setup(int t_cs, int t_irq, int w, int h)
 
   // link the irq_pin pint to it's interrupt handler
   attachInterrupt(digitalPinToInterrupt(t_irq), touch_irq, CHANGE);
-  
+  Serial.printf("After setting IRQ on pin %d\n", t_irq);
   // start the touchscreen timer - every whenever
   myTimer.begin(touch_read, 100000);
 }
