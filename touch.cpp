@@ -17,10 +17,10 @@
 #include "PixelVFO.h"
 
 // touchscreen calibration data
-#define TS_MINX 336
-#define TS_MINY 221
-#define TS_MAXX 3824
-#define TS_MAXY 3935
+#define TS_MINX 164
+#define TS_MINY 142
+#define TS_MAXX 3759
+#define TS_MAXY 4095
 
 #define MAX_X   320
 #define MAX_Y   240

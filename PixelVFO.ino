@@ -220,6 +220,7 @@ void loop(void)
     {
       case event_Down:
         Serial.printf("event_Down: x=%d, y=%d\n", x, y);
+        tft.fillCircle(x, y, 3, ILI9341_RED);
         // see if DOWN is on a VFO frequency digit
         if (y < DEPTH_FREQ_DISPLAY + 30)    // a bit of 'slop' allowed
         {
@@ -238,7 +239,6 @@ void loop(void)
       case event_Up:
         break;
       case event_Drag:
-        tft.fillCircle(x, y, 3, ILI9341_RED);
         break;
       default:
         abort("Unrecognized event!?");
