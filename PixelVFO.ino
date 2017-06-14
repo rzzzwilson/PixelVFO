@@ -97,7 +97,7 @@ void setup(void)
 
   // initialize 'char_x_offset' array
   int x_offset = FREQ_OFFSET_X;
-  for (int i = 0; i < NUM_F_CHAR; ++i)
+  for (int i = 0; i <= NUM_F_CHAR; ++i)
   {
     char_x_offset[i] = x_offset;
     x_offset += CHAR_WIDTH;
@@ -142,6 +142,14 @@ void setup(void)
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 
+  // draw the 'edge of digits' markers
+  for (int i = 0; i < NUM_F_CHAR; ++i)
+  { 
+    uint16_t x = char_x_offset[i];
+    
+    tft.drawFastVLine(x, 44, 6, ILI9341_RED);
+  }
+  
   // show the frequency
   display_frequency();
 }
@@ -203,7 +211,7 @@ void loop(void)
     if (event->event == event_None)
       break;
 
-    Serial.printf("Event: %s\n", event2display(event));
+//    Serial.printf("Event: %s\n", event2display(event));
 
     uint16_t x = event->x;
     uint16_t y = event->y;
@@ -211,12 +219,13 @@ void loop(void)
     switch (event->event)
     {
       case event_Down:
+        Serial.printf("event_Down: x=%d, y=%d\n", x, y);
         // see if DOWN is on a VFO frequency digit
         if (y < DEPTH_FREQ_DISPLAY + 30)    // a bit of 'slop' allowed
         {
           for (int i = 0; i < NUM_F_CHAR; ++i)
           {
-//            Serial.printf("Comparing %d against %d, %d\n", x, char_x_offset[i], char_x_offset[i+1]);
+            Serial.printf("i=%d, comparing x=%d against %d, %d\n", i, x, char_x_offset[i], char_x_offset[i+1]);
             if ((x > char_x_offset[i]) && (x < char_x_offset[i+1]))
             {
               // within char 'bucket'
