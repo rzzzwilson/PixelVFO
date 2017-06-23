@@ -44,8 +44,10 @@ controlled via SPI and has these accessible lines:
 +---------+-------------------------------+
 
 The code handling the touchscreen interface will use the standard pins
-to read the touchscreen status, but the T_IRQ pin will be used to
-handle the pen going DOWN and UP in an interrupt routine.
+to read the touchscreen status.  The T_IRQ pin was thought to be useful
+to determine if the screen is being touched or not, but was found to
+have lots pf "bounce", so we aren't using it at the moment.  This
+profoundly affects the remaining design below.
 
 The touchscreen code uses the SPI interface and the T_IRQ interrupt to
 create logical events.  These events are held in a *VFOEvent* structure::

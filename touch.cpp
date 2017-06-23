@@ -17,10 +17,16 @@
 #include "PixelVFO.h"
 
 // touchscreen calibration data
-#define TS_MINX 164
-#define TS_MINY 142
-#define TS_MAXX 3759
-#define TS_MAXY 4095
+#define TS_MINX   838
+#define TS_MAXX   3407
+#define TS_MINY   977
+#define TS_MAXY   3342
+#define TS_RANGEX 2569
+#define TS_RANGEY 2365
+#define TS_FUDGEX 268160
+#define TS_FUDGEY 234480
+
+
 
 #define MAX_X   320
 #define MAX_Y   240
@@ -88,8 +94,9 @@ static void touch_read(void)
   SPI.endTransaction();
   
   // convert to calibrated X and Y
-  x_calib = ((xraw - TS_MINX) * MAX_X) / (TS_MAXX - TS_MINX);
-  y_calib = ((yraw - TS_MINY) * MAX_Y) / (TS_MAXY - TS_MINY);
+  x_calib = (MAX_X*xraw - TS_FUDGEX)/TS_RANGEX;
+  y_calib = (MAX_Y*yraw - TS_FUDGEY)/TS_RANGEY;
+  
   if (x_calib < 0) x_calib = 0;
   if (x_calib > MAX_X) x_calib = MAX_X;
   if (y_calib < 0) y_calib = 0;
