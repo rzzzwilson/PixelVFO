@@ -9,19 +9,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <SPI.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
 #include "PixelVFO.h"
 #include "ArialBold24pt7b.h"
 #include "events.h"
-#include "touch.h"
 
 // PixelVFO program name & version
 const char *ProgramName = "PixelVFO";
 const char *Version = "1.0";
 const char *MinorVersion = "1";
 const char *Callsign = "vk4fawr";
+
+// This is calibration data for the raw touch data to the screen coordinates
+// 2.8" calibration
+#define TS_MINX 200
+#define TS_MINY 340
+#define TS_MAXX 3700
+#define TS_MAXY 3895
 
 // the depth of the event queue
 #define EVENT_QUEUE_LEN 20
@@ -32,8 +37,8 @@ const char *Callsign = "vk4fawr";
 #define TFT_CS  10
 
 // pins for touchscreen and IRQ line
-#define T_CS                4
-#define T_IRQ               3
+#define TS_CS               4
+#define TS_IRQ              3
 
 #define NUM_F_CHAR          8
 
@@ -60,6 +65,7 @@ const char *Callsign = "vk4fawr";
 
 // Declare the display and touchscreen interfaces
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+XPT2046_Touchscreen ts(TS_CS, TS_IRQ);
 
 bool change = true;
 unsigned long last_millis = 0;
@@ -70,6 +76,10 @@ char freq_display[NUM_F_CHAR];          // digits of frequency, as binary values
 unsigned long frequency;                // frequency as a long integer
 uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
 
+int ts_rotation = 0;
+uint32_t volatile msraw = 0x80000000;
+#define MIN_REPEAT_PERIOD   2
+bool volatile PenDown = false;
 
 //-----------------------------------------------
 // Abort the application giving as much information about the
@@ -82,6 +92,106 @@ void abort(const char *msg)
 }
 
 //-----------------------------------------------
+// Draw the 'thousands' markers
+//-----------------------------------------------
+
+void draw_thousands(void)
+{
+  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
+  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
+}
+
+//-----------------------------------------------
+// Draw the basic screen
+//-----------------------------------------------
+
+void draw_screen(void)
+{
+  // start drawing things that don't change
+  tft.fillScreen(SCREEN_BG2);
+  tft.setTextWrap(false);
+  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
+  tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
+  tft.drawRect(2, 2, tft.width()-4, DEPTH_FREQ_DISPLAY-4, SCREEN_BG3);
+  tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
+  tft.setTextColor(FREQ_FG);
+  tft.print("Hz");
+}
+
+//----------------------------------------
+// Set the touchscreen rotation.
+//     rot  0 - default, portrait
+//          1 - rotated 90 degrees, landscape
+//          2 - rotated 180 degrees, portrait
+//          3 - rotated 270 degrees, landscape
+//
+// Matches the orientation set for the TFT display.
+//----------------------------------------
+
+void ts_setRotation(int rot)
+{
+  ts_rotation = rot % 4;
+}
+
+//-----------------------------------------------
+// Read a point from the touch screen.
+//    x, y  addresses of int to update
+// Returns 'true' if screen touched, else 'false'.
+//-----------------------------------------------
+
+bool ts_read(int *x, int *y)
+{
+  // Retrieve a point  
+  TS_Point p = ts.getPoint();
+
+  if (p.z == 0)
+//  if (p.z < 200)
+  {
+    return false;
+  }
+
+  Serial.printf("ts_read: p.x=%d, p.y=%d, p.z=%d\n", p.x, p.y, p.z);
+  // Scale from ~0->4000 to tft.width using the calibration #'s
+  *x = tft.width() - map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
+  *y = tft.height() - map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
+
+  return true;
+}
+
+//----------------------------------------
+// Interrupt - pen went down or up.
+//
+// Maintain the correct PenDown state and call touch_read() if DOWN.
+// Also push a event_Up event if going UP.
+//----------------------------------------
+
+void touch_irq(void)
+{
+  static int last_x = 0;
+  static int last_y = 0;
+  uint32_t now = millis();
+
+  // ignore interrupt if too quick
+  if ((now - msraw) < MIN_REPEAT_PERIOD) return;
+  msraw = now;
+
+  if (digitalRead(TS_IRQ) == 0)
+  { // pen DOWN
+    PenDown = true;
+    ts_read(&last_x, &last_y);
+    Serial.printf("After ts_read(): last_x=%d, last_y=%d\n", last_x, last_y);
+    event_push(event_Down, last_x, last_y);
+  }
+  else
+  { // pen UP
+    if (PenDown)
+      event_push(event_Up, last_x, last_y);
+    PenDown = false;
+  }
+}
+
+//-----------------------------------------------
 // Initialize PixelVFO.
 //-----------------------------------------------
 
@@ -91,6 +201,14 @@ void setup(void)
   Serial.begin(115200);
   Serial.printf("%s %s.%s\n", ProgramName, Version, MinorVersion); 
 
+  // initialize the touchscreen pins, mode and level
+  pinMode(TS_CS, OUTPUT);
+  digitalWrite(TS_CS, HIGH);
+  pinMode(TS_IRQ, INPUT_PULLUP);
+
+  // link the TS_IRQ pin to its interrupt handler
+  attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, CHANGE);
+  
   // set up the VFO frequency data structures
   frequency = 1000000L;
   freq_to_buff(freq_display, 1000000L);
@@ -124,31 +242,22 @@ void setup(void)
   tft.setRotation(1);
 
   // initialize the touch stuff
-  touch_setup(T_CS, T_IRQ, tft.width(), tft.height());
-  touch_setRotation(1);
+//  touch_setup(ts, tft.width(), tft.height());
+  ts_setRotation(1);
 
-  // start drawing things that don't change
-  tft.fillScreen(SCREEN_BG2);
-  tft.setTextWrap(false);
-  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
-  tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
-  tft.drawRect(2, 2, tft.width()-4, DEPTH_FREQ_DISPLAY-4, SCREEN_BG3);
-  tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
-  tft.setTextColor(FREQ_FG);
-  tft.print("Hz");
-
+  // draw the basic screen
+  draw_screen();
+  
   // draw the 'thousands' markers
-  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
-  tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
-
-  // draw the 'edge of digits' markers
-  for (int i = 0; i < NUM_F_CHAR; ++i)
-  { 
-    uint16_t x = char_x_offset[i];
-    
-    tft.drawFastVLine(x, 44, 6, ILI9341_RED);
-  }
+  draw_thousands();
+  
+//  // draw the 'edge of digits' markers
+//  for (int i = 0; i < NUM_F_CHAR; ++i)
+//  { 
+//    uint16_t x = char_x_offset[i];
+//    
+//    tft.drawFastVLine(x, 44, 6, ILI9341_RED);
+//  }
   
   // show the frequency
   display_frequency();
@@ -202,6 +311,16 @@ void display_frequency(void)
 
 void loop(void)
 {
+#if 0
+  int x;
+  int y;
+  
+  if (ts_read(&x, &y))
+  {
+    Serial.printf("Point: x=%d, y=%d\n", x, y);
+  }
+#endif
+
   // handle all events in the queue
   while (true)
   {
@@ -211,7 +330,7 @@ void loop(void)
     if (event->event == event_None)
       break;
 
-//    Serial.printf("Event: %s\n", event2display(event));
+    Serial.printf("Event: %s\n", event2display(event));
 
     uint16_t x = event->x;
     uint16_t y = event->y;
