@@ -83,6 +83,8 @@ Every event has associated X and Y coordinate values.
 | vfo_Drag      | Movement while the pen is down            |
 +---------------+-------------------------------------------+
 
+Note: The initial design **won't** use the *vfo_Drag* event.
+
 Event Queue
 -----------
 
