@@ -1,4 +1,4 @@
-/***************************************************
+/****************************************************
  * PixelVFO - a digital VFO driven by touchscreen.
  *
  * VK4FAWR - rzzzwilson@gmail.com
@@ -29,7 +29,8 @@
 // The XPT2046 uses hardware SPI, #4 is CS with #3 for interrupts
 #define TS_CS       4
 #define TS_IRQ      3
-XPT2046_Touchscreen ts(TS_CS, TS_IRQ);
+//XPT2046_Touchscreen ts(TS_CS, TS_IRQ);
+XPT2046_Touchscreen ts(TS_CS);
 
 // The display also uses hardware SPI, plus #9 & #10
 #define TFT_RST     8
@@ -55,6 +56,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define SCREEN_BG1          ILI9341_BLACK
 #define FREQ_FG             ILI9341_BLUE
 #define FREQ_BG             ILI9341_WHITE
+#define FREQ_SEL_BG         ILI9341_GREEN
 #define BOTTOM_BG           ILI9341_WHITE
 
 // touchscreen stuff
@@ -67,6 +69,9 @@ int ts_height = tft.height();
 char freq_display[NUM_F_CHAR];          // digits of frequency, as binary values [0-9]
 unsigned long frequency;                // frequency as a long integer
 uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
+
+// index of selected digit in frequency display
+int sel_digit = -1;
 
 uint32_t volatile msraw = 0x80000000;
 #define MIN_REPEAT_PERIOD   2
@@ -102,10 +107,12 @@ void touch_irq(void)
 
   if (digitalRead(TS_IRQ) == 0)
   { // pen DOWN
+    if (!PenDown)
+    {
+      ts_read(&last_x, &last_y);
+      event_push(event_Down, last_x, last_y);
+    }
     PenDown = true;
-    ts_read(&last_x, &last_y);
-    Serial.printf("After ts_read(): last_x=%d, last_y=%d\n", last_x, last_y);
-    event_push(event_Down, last_x, last_y);
   }
   else
   { // pen UP
@@ -156,9 +163,11 @@ void draw_screen(void)
   tft.fillScreen(SCREEN_BG2);
   tft.setTextWrap(false);
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+#if 0
   tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
   tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
   tft.drawRect(2, 2, tft.width()-4, DEPTH_FREQ_DISPLAY-4, SCREEN_BG3);
+#endif
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
@@ -205,25 +214,27 @@ bool ts_read(int *x, int *y)
   // Scale from ~0->4000 to tft.width using the calibration #'s
   *x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
   *y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
-  Serial.print("New x="); Serial.print(*x);
-  Serial.print(", y="); Serial.println(*y);
 
   return true;
 }
 
 //-----------------------------------------------
 // Draw the frequency byte buffer to the screen.
+//     select  index of digit to highlight
 // Updates all digits on the screen.  Skips leading zeros.
 //-----------------------------------------------
 
-void display_frequency(void)
+void display_frequency(int select=-1)
 {
   bool leading_space = true;
 
   for (int i = 0; i < NUM_F_CHAR; ++i)
   {
-    tft.fillRect(freq_display[i]-1, FREQ_OFFSET_Y-CHAR_HEIGHT-1,
-                 CHAR_WIDTH+2, CHAR_HEIGHT+2, FREQ_BG);
+    if (i == select)
+      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_SEL_BG);
+    else
+      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_BG);
+                   
     if ((freq_display[i] != '0') || !leading_space)
     {
       tft.drawChar(char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
@@ -233,19 +244,15 @@ void display_frequency(void)
 }
 
 //-----------------------------------------------
+// Setup the whole shebang.
 //-----------------------------------------------
 void setup(void)
 {
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
   
-  // initialize the touchscreen pins, mode and level
-//  pinMode(TS_CS, OUTPUT);
-//  digitalWrite(TS_CS, HIGH);
-//  pinMode(TS_IRQ, INPUT_PULLUP);
-
   // link the TS_IRQ pin to its interrupt handler
-  //attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, CHANGE);
   
   // set up the VFO frequency data structures
   frequency = 1000000L;
@@ -259,6 +266,7 @@ void setup(void)
     x_offset += CHAR_WIDTH;
   }
 
+  // start handling devices
   SPI.begin();
   
   tft.begin();
@@ -268,21 +276,12 @@ void setup(void)
   ts.begin();
   ts_setRotation(1);
   
-//  tft.fillScreen(ILI9341_BLACK);
   // draw the basic screen
   draw_screen();
   
   // draw the 'thousands' markers
   draw_thousands();
-  
-  // draw the 'edge of digits' markers
-  for (int i = 0; i < NUM_F_CHAR; ++i)
-  { 
-    uint16_t x = char_x_offset[i];
-    
-    tft.drawFastVLine(x, 44, 6, ILI9341_RED);
-  }
-  
+
   // show the frequency
   display_frequency();
 }
@@ -291,9 +290,45 @@ void setup(void)
 //-----------------------------------------------
 void loop()
 {
-  int x = 0;
-  int y = 0;
-  
-  if (ts_read(&x, &y))
-    tft.fillCircle(x, y, 5, ILI9341_RED);
+  // handle all events in the queue
+  while (true)
+  {
+    // get next event and handle it
+    VFOEvent *event = event_pop();
+
+    if (event->event == event_None)
+      break;
+
+    uint16_t x = event->x;
+    uint16_t y = event->y;
+
+    Serial.printf("Event %s\n", event2display(event));
+    
+    switch (event->event)
+    {
+      case event_Down:
+        // see if DOWN is on a VFO frequency digit
+        if (y < DEPTH_FREQ_DISPLAY + 30)    // a bit of 'slop' allowed
+        {
+          for (int i = 0; i < NUM_F_CHAR; ++i)
+          {
+            if ((x > char_x_offset[i]) && (x < char_x_offset[i+1]))
+            {
+              // within char 'bucket'
+              sel_digit = i;
+              display_frequency(i);
+              break;
+            }
+          }
+        }
+        break;
+      case event_Up:
+//        display_frequency();
+        break;
+      case event_Drag:
+        break;
+      default:
+        abort("Unrecognized event!?");
+    }
+  }
 }
