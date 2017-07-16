@@ -34,7 +34,7 @@ const char *hs_display(HotSpot *hs)
 
 void hs_dump(char const *msg, HotSpot *hs_array, int len)
 {
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
   Serial.printf(F("HotSpot array: %s\n"), msg);
   for (int i = 0; i < len; ++i)
   {
@@ -42,7 +42,7 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 
     Serial.printf(F("  %d: %s\n"), i, hs_display(hs));
   }
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
 }
 
 //----------------------------------------
