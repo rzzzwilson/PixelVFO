@@ -9,6 +9,7 @@
 #include <XPT2046_Touchscreen.h>
 #include "ArialBold24pt7b.h"
 #include "events.h"
+#include "hotspot.h"
 
 #define MAJOR_VERSION   "1"
 #define MINOR_VERSION   "0"
@@ -63,6 +64,24 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 int ts_rotation = 0;
 int ts_width = tft.width();
 int ts_height = tft.height();
+
+// ONLINE button definitions
+#define BUTTON_RADIUS       5
+
+#define ONLINE_WIDTH        145
+#define ONLINE_HEIGHT       35
+#define ONLINE_X            0
+#define ONLINE_Y            (ts_height - ONLINE_HEIGHT)
+#define ONLINE_BG           ILI9341_RED
+#define ONLINE_FG           ILI9341_BLACK
+
+// MENU button definitions
+#define MENU_WIDTH          145
+#define MENU_HEIGHT         35
+#define MENU_X              (ts_width - MENU_WIDTH)
+#define MENU_Y              (ts_height - MENU_HEIGHT)
+#define MENU_BG             ILI9341_GREEN
+#define MENU_FG             ILI9341_BLACK
 
 // store the VFO frequency here
 // the characters in 'freq_display' are stored MSB at left (index 0)
@@ -157,6 +176,22 @@ void draw_thousands(void)
 // Draw the basic screen
 //-----------------------------------------------
 
+#if 0
+void drawOnline(void)
+{
+  tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, ONLINE_BG);
+  tft.setCursor(ONLINE_X + 2, ONLINE_Y + 2);
+  tft.print("ONLINE");
+}
+
+void drawMenu(void)
+{
+  tft.fillRoundRect(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, BUTTON_RADIUS, MENU_BG);
+  tft.setCursor(MENU_X + 2, MENU_Y + 2);
+  tft.print("MENU");
+}
+#endif
+
 void draw_screen(void)
 {
   // start drawing things that don't change
@@ -171,6 +206,9 @@ void draw_screen(void)
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
+
+//  drawOnline();
+//  drawMenu();
 }
 
 //-----------------------------------------------
@@ -243,6 +281,23 @@ void display_frequency(int select=-1)
   }
 }
 
+// main screen HotSpot definitions
+HotSpot hs_mainscreen[] =
+{
+  {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 0},
+  {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 1},
+  {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 2},
+  {FREQ_OFFSET_X + 3*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 3},
+  {FREQ_OFFSET_X + 4*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 4},
+  {FREQ_OFFSET_X + 5*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 5},
+  {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 6},
+  {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 7},
+  {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, main_hs_handler, 10},
+  {MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, main_hs_handler, 11},
+};
+
+#define MainScreenHSLen   (sizeof(hs_mainscreen)/sizeof(hs_mainscreen[0]))
+
 //-----------------------------------------------
 // Setup the whole shebang.
 //-----------------------------------------------
@@ -284,9 +339,21 @@ void setup(void)
 
   // show the frequency
   display_frequency();
+
+  hs_dump("hs_mainscreen", hs_mainscreen, MainScreenHSLen);
 }
 
 //-----------------------------------------------
+// Main screen hotspot handler.
+//-----------------------------------------------
+
+void main_hs_handler(HotSpot *hs_ptr)
+{
+  Serial.printf("main_hs_handler: hs_ptr->%s\n", hs_display(hs_ptr));
+}
+
+//-----------------------------------------------
+// Arduino main loop function.
 //-----------------------------------------------
 void loop()
 {
@@ -307,19 +374,13 @@ void loop()
     switch (event->event)
     {
       case event_Down:
-        // see if DOWN is on a VFO frequency digit
-        if (y < DEPTH_FREQ_DISPLAY + 30)    // a bit of 'slop' allowed
+        if (hs_handletouch(x, y, hs_mainscreen, MainScreenHSLen))
         {
-          for (int i = 0; i < NUM_F_CHAR; ++i)
-          {
-            if ((x > char_x_offset[i]) && (x < char_x_offset[i+1]))
-            {
-              // within char 'bucket'
-              sel_digit = i;
-              display_frequency(i);
-              break;
-            }
-          }
+          Serial.printf("hs_handletouch() returned 'true'\n");
+        }
+        else
+        {
+          Serial.printf("hs_handletouch() returned 'false'\n");
         }
         break;
       case event_Up:
