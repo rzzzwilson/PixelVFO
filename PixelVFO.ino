@@ -7,12 +7,17 @@
 #include <SPI.h>
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
+#include <Fonts/FreeSansBold12pt7b.h>
+#include <Fonts/FreeSansBold24pt7b.h>
 #include "ArialBold24pt7b.h"
 #include "events.h"
 #include "hotspot.h"
 
 #define MAJOR_VERSION   "1"
 #define MINOR_VERSION   "0"
+
+#define SCREEN_WIDTH    320
+#define SCREEN_HEIGHT   240
 
 // This is calibration data for the raw touch data to the screen coordinates
 // 2.8" calibration
@@ -48,6 +53,10 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define CHAR_HEIGHT         32
 #define MHZ_OFFSET_X        (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
 
+//#define FONT_FREQ           (&ArialBold24pt7b)
+#define FONT_BUTTON         (&FreeSansBold12pt7b)
+#define FONT_FREQ           (&FreeSansBold24pt7b)
+
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 #define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
 
@@ -62,26 +71,38 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
 // touchscreen stuff
 int ts_rotation = 0;
-int ts_width = tft.width();
-int ts_height = tft.height();
+int ts_width = SCREEN_WIDTH;
+int ts_height = SCREEN_HEIGHT;
 
 // ONLINE button definitions
 #define BUTTON_RADIUS       5
 
-#define ONLINE_WIDTH        145
+#define ONLINE_WIDTH        110
 #define ONLINE_HEIGHT       35
 #define ONLINE_X            0
 #define ONLINE_Y            (ts_height - ONLINE_HEIGHT)
 #define ONLINE_BG           ILI9341_RED
+#define ONLINE_BG2          ILI9341_RED
+#define STANDBY_BG          ILI9341_GREEN
+#define STANDBY_BG2         0x4000
 #define ONLINE_FG           ILI9341_BLACK
 
 // MENU button definitions
-#define MENU_WIDTH          145
+#define MENU_WIDTH          110
 #define MENU_HEIGHT         35
 #define MENU_X              (ts_width - MENU_WIDTH)
 #define MENU_Y              (ts_height - MENU_HEIGHT)
 #define MENU_BG             ILI9341_GREEN
+//#define MENU_BG2            0x0400
+#define MENU_BG2            ILI9341_BLACK
 #define MENU_FG             ILI9341_BLACK
+
+// the VFO states
+enum VFOState
+{
+  VFO_Standby,
+  VFO_Online
+};
 
 // store the VFO frequency here
 // the characters in 'freq_display' are stored MSB at left (index 0)
@@ -95,6 +116,9 @@ int sel_digit = -1;
 uint32_t volatile msraw = 0x80000000;
 #define MIN_REPEAT_PERIOD   2
 bool volatile PenDown = false;
+
+//VFOState vfo_state = VFO_Standby;
+VFOState vfo_state = VFO_Online;
 
 
 //-----------------------------------------------
@@ -176,39 +200,53 @@ void draw_thousands(void)
 // Draw the basic screen
 //-----------------------------------------------
 
-#if 0
 void drawOnline(void)
 {
-  tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, ONLINE_BG);
-  tft.setCursor(ONLINE_X + 2, ONLINE_Y + 2);
-  tft.print("ONLINE");
+  if (vfo_state == VFO_Standby)
+  {
+    tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, STANDBY_BG2);
+    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, STANDBY_BG);
+    tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
+    tft.setFont(FONT_BUTTON);
+    tft.setTextColor(ONLINE_FG);
+    tft.print("Standby");
+  }
+  else
+  {
+    tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, ONLINE_BG2);
+    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, ONLINE_BG);
+    tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
+    tft.setFont(FONT_BUTTON);
+    tft.setTextColor(ONLINE_FG);
+    tft.print("ONLINE");
+  }
 }
 
 void drawMenu(void)
 {
-  tft.fillRoundRect(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, BUTTON_RADIUS, MENU_BG);
-  tft.setCursor(MENU_X + 2, MENU_Y + 2);
-  tft.print("MENU");
+  tft.fillRoundRect(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, BUTTON_RADIUS, MENU_BG2);
+  tft.fillRoundRect(MENU_X+1, MENU_Y+1, MENU_WIDTH-2, MENU_HEIGHT-2, BUTTON_RADIUS, MENU_BG);
+  tft.setCursor(MENU_X + 22, SCREEN_HEIGHT - 10);
+  tft.setFont(FONT_BUTTON);
+  tft.setTextColor(MENU_FG);
+  tft.print("Menu");
 }
-#endif
 
 void draw_screen(void)
 {
+  tft.setFont(FONT_FREQ);
+
   // start drawing things that don't change
   tft.fillScreen(SCREEN_BG2);
   tft.setTextWrap(false);
-  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-#if 0
-  tft.drawRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, SCREEN_BG1);
-  tft.drawRect(1, 1, tft.width()-2, DEPTH_FREQ_DISPLAY-2, SCREEN_BG2);
-  tft.drawRect(2, 2, tft.width()-4, DEPTH_FREQ_DISPLAY-4, SCREEN_BG3);
-#endif
+//  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
 
-//  drawOnline();
-//  drawMenu();
+  drawOnline();
+  drawMenu();
 }
 
 //-----------------------------------------------
@@ -219,16 +257,23 @@ void ts_setRotation(uint8_t rot)
   switch (ts_rotation)
   {
     case 0:     // 'normal' portrait
-    case 2:     // invert portrait
       ts_width = tft.width();
       ts_height = tft.height();
       break;
     case 1:     // 'normal' landscape
+      ts_width = tft.height();
+      ts_height = tft.width();
+      break;
+    case 2:     // invert portrait
+      ts_width = tft.width();
+      ts_height = tft.height();
+      break;
     case 3:     // invert landscape
       ts_width = tft.height();
       ts_height = tft.width();
       break;
   }
+  Serial.printf("ts_setRotation: rot=%d, ts_width=%d, ts_height=%d\n", rot, ts_width, ts_height);
 }
 
 //-----------------------------------------------
@@ -266,6 +311,8 @@ void display_frequency(int select=-1)
 {
   bool leading_space = true;
 
+  tft.setFont(FONT_FREQ);
+  
   for (int i = 0; i < NUM_F_CHAR; ++i)
   {
     if (i == select)
@@ -325,11 +372,9 @@ void setup(void)
   SPI.begin();
   
   tft.begin();
-  tft.setFont(&ArialBold24pt7b);
   tft.setRotation(1);
-
+    
   ts.begin();
-  ts_setRotation(1);
   
   // draw the basic screen
   draw_screen();
@@ -357,7 +402,9 @@ void main_hs_handler(HotSpot *hs_ptr)
 //-----------------------------------------------
 void loop()
 {
-  // handle all events in the queue
+//  drawOnline();
+
+ // handle all events in the queue
   while (true)
   {
     // get next event and handle it
