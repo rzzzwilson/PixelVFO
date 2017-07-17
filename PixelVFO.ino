@@ -14,7 +14,7 @@
 #include "hotspot.h"
 
 #define MAJOR_VERSION   "1"
-#define MINOR_VERSION   "0"
+#define MINOR_VERSION   "1"
 
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
@@ -82,10 +82,12 @@ int ts_height = SCREEN_HEIGHT;
 #define ONLINE_X            0
 #define ONLINE_Y            (ts_height - ONLINE_HEIGHT)
 #define ONLINE_BG           ILI9341_RED
-#define ONLINE_BG2          ILI9341_RED
+#define ONLINE_BG2          0x4000
 #define STANDBY_BG          ILI9341_GREEN
 #define STANDBY_BG2         0x4000
-#define ONLINE_FG           ILI9341_BLACK
+//#define ONLINE_FG           ILI9341_BLACK
+#define ONLINE_FG           ILI9341_GREEN
+#define STANDBY_FG           ILI9341_BLACK
 
 // MENU button definitions
 #define MENU_WIDTH          110
@@ -208,7 +210,7 @@ void drawOnline(void)
     tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, STANDBY_BG);
     tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
     tft.setFont(FONT_BUTTON);
-    tft.setTextColor(ONLINE_FG);
+    tft.setTextColor(STANDBY_FG);
     tft.print("Standby");
   }
   else
@@ -331,16 +333,16 @@ void display_frequency(int select=-1)
 // main screen HotSpot definitions
 HotSpot hs_mainscreen[] =
 {
-  {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 0},
-  {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 1},
-  {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 2},
-  {FREQ_OFFSET_X + 3*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 3},
-  {FREQ_OFFSET_X + 4*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 4},
-  {FREQ_OFFSET_X + 5*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 5},
-  {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 6},
-  {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, main_hs_handler, 7},
-  {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, main_hs_handler, 10},
-  {MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, main_hs_handler, 11},
+  {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 0},
+  {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 1},
+  {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 2},
+  {FREQ_OFFSET_X + 3*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 3},
+  {FREQ_OFFSET_X + 4*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 4},
+  {FREQ_OFFSET_X + 5*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 5},
+  {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 6},
+  {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 7},
+  {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, online_hs_handler, 0},
+  {MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, menu_hs_handler, 0},
 };
 
 #define MainScreenHSLen   (sizeof(hs_mainscreen)/sizeof(hs_mainscreen[0]))
@@ -382,6 +384,12 @@ void setup(void)
   // draw the 'thousands' markers
   draw_thousands();
 
+#if 0
+  // draw the 'edge of digits' markers
+  for (int i = 0; i <= NUM_F_CHAR; ++i)
+    tft.drawFastVLine(char_x_offset[i], 44, 6, ILI9341_RED);
+#endif
+
   // show the frequency
   display_frequency();
 
@@ -389,12 +397,31 @@ void setup(void)
 }
 
 //-----------------------------------------------
-// Main screen hotspot handler.
+// Screen hotspot handlers.
 //-----------------------------------------------
 
-void main_hs_handler(HotSpot *hs_ptr)
+bool freq_hs_handler(HotSpot *hs_ptr)
 {
-  Serial.printf("main_hs_handler: hs_ptr->%s\n", hs_display(hs_ptr));
+  Serial.printf("freq_hs_handler: hs_ptr->%s\n", hs_display(hs_ptr));
+  return false;
+}
+
+bool online_hs_handler(HotSpot *hs_ptr)
+{
+  if (vfo_state == VFO_Standby)
+    vfo_state = VFO_Online;
+  else
+    vfo_state = VFO_Standby;
+
+  drawOnline();
+
+  return false;
+}
+
+bool menu_hs_handler(HotSpot *hs_ptr)
+{
+  Serial.printf("menu_hs_handler: would display menu\n");
+  return true;
 }
 
 //-----------------------------------------------
