@@ -246,7 +246,7 @@ void draw_screen(void)
   tft.setFont(FONT_FREQ);
 
   // start drawing things that don't change
-  tft.fillScreen(SCREEN_BG2);
+  tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   tft.setTextWrap(false);
 //  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
@@ -413,7 +413,7 @@ void setup(void)
 #define KEYPAD_H      (KEYPAD_MARGIN*5 + KEYPAD_BUTTON_H*4)
 #define KEYPAD_X      ((SCREEN_WIDTH - KEYPAD_W) / 2)
 #define KEYPAD_Y      (DEPTH_FREQ_DISPLAY + 1)
-#define KEYPAD_EDGE_COLOR   ILI9341_GREEN
+#define KEYPAD_EDGE_COLOR   ILI9341_BLUE
 #define KEYPAD_FILL_COLOR   ILI9341_WHITE
 #define KEYPAD_BUTTON_W   44
 #define KEYPAD_BUTTON_H   44
@@ -430,13 +430,13 @@ bool keypad_handler(HotSpot *hs)
 bool keypad_close_handler(HotSpot *hs)
 {
   Serial.printf("keypad_close_handler: called\n");
-  return false;
+  return true;
 }
 
 bool keypad_freq_handler(HotSpot *hs)
 {
   Serial.printf("keypad_freq_handler: called, arg=%d\n", hs->arg);
-  return true;
+  return false;
 }
 
 // main screen HotSpot definitions
@@ -474,6 +474,7 @@ void show_freq_keypad(int offset)
   tft.fillRoundRect(KEYPAD_X+1, KEYPAD_Y+1, KEYPAD_W-2, KEYPAD_H-2, BUTTON_RADIUS, KEYPAD_EDGE_COLOR);
 
   for (int y = 0; y < 3; ++y)
+  {
     for (int x = 0; x < 3; ++x)
     {
       char ch;
@@ -497,6 +498,7 @@ void show_freq_keypad(int offset)
       hs_keypad[y*3 + x].x = KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x;
       hs_keypad[y*3 + x].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
     }
+  }
     
   int x = 1;
   int y = 3;
@@ -536,11 +538,13 @@ void show_freq_keypad(int offset)
 
   // event loop
   // flush any pending events & handle new ones
-//  event_flush();
+  event_flush();
   while (true)
   {
     // get next event and handle it
     VFOEvent *event = event_pop();
+    if (event->event == event_None)
+      continue;
 
     uint16_t x = event->x;
     uint16_t y = event->y;
@@ -548,17 +552,16 @@ void show_freq_keypad(int offset)
     switch (event->event)
     {
       case event_Down:
-      Serial.printf("show_freq_keypad: event %s\n", event2display(event));
+        Serial.printf("show_freq_keypad: event %s\n", event2display(event));
         if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
         {
           Serial.printf("hs_handletouch() returned 'true', end of keypad\n");
-          display_frequency();
+//          draw_screen();
+//          display_frequency();
           return;
         }
         break;
-      case event_Up:
-      case event_Drag:
-      case event_None:
+      default:
         break;
     }
   }
@@ -598,8 +601,6 @@ bool menu_hs_handler(HotSpot *hs_ptr)
 //-----------------------------------------------
 void loop()
 {
-//  drawOnline();
-
  // handle all events in the queue
   while (true)
   {
@@ -620,13 +621,12 @@ void loop()
         if (hs_handletouch(x, y, hs_mainscreen, MainScreenHSLen))
         {
           Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
+          draw_screen();
           display_frequency();
+          event_flush();
         }
-
         break;
       case event_Up:
-//        display_frequency();
-        break;
       case event_Drag:
         break;
       default:
