@@ -15,7 +15,7 @@
 struct HotSpot;
 
 // a hotspot handler function typedef
-typedef void (*HS_Handler)(HotSpot *);
+typedef bool (*HS_Handler)(HotSpot *);
 
 // a hotspot definition
 struct HotSpot

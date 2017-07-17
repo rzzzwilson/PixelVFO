@@ -57,35 +57,14 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 bool hs_handletouch(int touch_x, int touch_y,
                     HotSpot *hs, int hs_len)
 {
-  Serial.printf("hs_handletouch: touch_x=%d, touch_y=%d\n", touch_x, touch_y);
-  
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
-    Serial.printf("hs_handletouch: checking hs->x=%d, hs->y=%d, hs->w=%d, hs->h=%d\n",
-                  hs->x, hs->y, hs->w, hs->h);
-    if (touch_x < hs->x)
-    {
-      Serial.printf("touch_x < hs->x\n");
-      continue;
-    }
-    if (touch_x > hs->x + hs->w)
-    {
-      Serial.printf("touch_x > hs->x + hs->w\n");
-      continue;
-    }
-    if (touch_y < hs->y)
-    {
-      Serial.printf("touch_y < hs->y\n");
-      continue;
-    }
-    if (touch_y > hs->y + hs->h)
-    {
-      Serial.printf("touch_y > hs->y + hs->h\n");
-      continue;
-    }
+    if (touch_x < hs->x) continue;
+    if (touch_x > hs->x + hs->w) continue;
+    if (touch_y < hs->y) continue;
+    if (touch_y > hs->y + hs->h) continue;
 
-    (hs->handler)(hs);
-    return true;
+    return (hs->handler)(hs);
   }
 
   return false;
