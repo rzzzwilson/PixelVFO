@@ -20,22 +20,30 @@
 #define SCREEN_HEIGHT   240
 
 // This is calibration data for the raw touch data to the screen coordinates
+#if 0
 // 2.8" calibration
 #define TS_MINX     200
 #define TS_MINY     340
 #define TS_MAXX     3700
 #define TS_MAXY     3895
+#endif
 
+#if 1
 // 2.2" calibration
-//#define TS_MINX     170
-//#define TS_MINY     180
-//#define TS_MAXX     3720
-//#define TS_MAXY     3800
+#define TS_MINX     170
+#define TS_MINY     180
+#define TS_MAXX     3720
+#define TS_MAXY     3800
+#endif
 
 // The XPT2046 uses hardware SPI, #4 is CS with #3 for interrupts
+// We don't use the T_IRQ pin as we want to use interrupts in VFO code
+// TODO: There is some problem with T_IRQ interrupt.  They just stop
+//       working on small code changes and removing/reapplying power
+//       sometimes fixes the problem!?  Think about using polling in
+//       loop() instead of interrupts.
 #define TS_CS       4
 #define TS_IRQ      3
-//XPT2046_Touchscreen ts(TS_CS, TS_IRQ);
 XPT2046_Touchscreen ts(TS_CS);
 
 // The display also uses hardware SPI, plus #9 & #10
@@ -119,8 +127,7 @@ uint32_t volatile msraw = 0x80000000;
 #define MIN_REPEAT_PERIOD   2
 bool volatile PenDown = false;
 
-//VFOState vfo_state = VFO_Standby;
-VFOState vfo_state = VFO_Online;
+VFOState vfo_state = VFO_Standby;
 
 
 //-----------------------------------------------
@@ -397,13 +404,175 @@ void setup(void)
 }
 
 //-----------------------------------------------
+// Show the frequency adjust keypad startinbg at the given char.
+//     offset  offset of the selected char
+// We use an event loop here to handle the keypad events.
+//-----------------------------------------------
+
+#define KEYPAD_W      (KEYPAD_MARGIN*4 + KEYPAD_BUTTON_W*3)
+#define KEYPAD_H      (KEYPAD_MARGIN*5 + KEYPAD_BUTTON_H*4)
+#define KEYPAD_X      ((SCREEN_WIDTH - KEYPAD_W) / 2)
+#define KEYPAD_Y      (DEPTH_FREQ_DISPLAY + 1)
+#define KEYPAD_EDGE_COLOR   ILI9341_GREEN
+#define KEYPAD_FILL_COLOR   ILI9341_WHITE
+#define KEYPAD_BUTTON_W   44
+#define KEYPAD_BUTTON_H   44
+#define KEYPAD_MARGIN     2
+
+char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+
+bool keypad_handler(HotSpot *hs)
+{
+  Serial.printf("keypad_handler: called, arg=%d\n", hs->arg);
+  return false;
+}
+
+bool keypad_close_handler(HotSpot *hs)
+{
+  Serial.printf("keypad_close_handler: called\n");
+  return false;
+}
+
+bool keypad_freq_handler(HotSpot *hs)
+{
+  Serial.printf("keypad_freq_handler: called, arg=%d\n", hs->arg);
+  return true;
+}
+
+// main screen HotSpot definitions
+HotSpot hs_keypad[] =
+{
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 1},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 2},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 3},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 4},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 5},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 6},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 7},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 8},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 9},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 0},
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_close_handler, 0},
+  {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 0},
+  {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 1},
+  {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 2},
+  {FREQ_OFFSET_X + 3*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 3},
+  {FREQ_OFFSET_X + 4*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 4},
+  {FREQ_OFFSET_X + 5*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 5},
+  {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 6},
+  {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 7},
+};  
+
+#define KeypadHSLen   (sizeof(hs_keypad)/sizeof(hs_keypad[0]))
+
+
+void show_freq_keypad(int offset)
+{
+  Serial.printf("show_freq_keypad: offset=%d\n", offset);
+  display_frequency(offset);
+  tft.fillRoundRect(KEYPAD_X, KEYPAD_Y, KEYPAD_W, KEYPAD_H, BUTTON_RADIUS, ILI9341_BLACK);
+  tft.fillRoundRect(KEYPAD_X+1, KEYPAD_Y+1, KEYPAD_W-2, KEYPAD_H-2, BUTTON_RADIUS, KEYPAD_EDGE_COLOR);
+
+  for (int y = 0; y < 3; ++y)
+    for (int x = 0; x < 3; ++x)
+    {
+      char ch;
+      
+      Serial.printf("x=%d, y=%d, i=%d, char='%c'\n", x, y, y*3 + x, keypad_chars[y*3 + x]);
+      tft.drawRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x,
+                        KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y,
+                        KEYPAD_BUTTON_H, KEYPAD_BUTTON_H,
+                        BUTTON_RADIUS, ILI9341_BLACK);
+      tft.fillRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1,
+                        KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y+1,
+                        KEYPAD_BUTTON_H-2, KEYPAD_BUTTON_H-2,
+                        BUTTON_RADIUS, KEYPAD_FILL_COLOR);
+      tft.setCursor(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1 + 14,
+                    KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y + 30);
+      tft.setFont(FONT_BUTTON);
+      tft.setTextColor(STANDBY_FG);
+      ch = '0' + y*3 + x + 1;
+      tft.print(ch);
+
+      hs_keypad[y*3 + x].x = KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x;
+      hs_keypad[y*3 + x].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
+    }
+    
+  int x = 1;
+  int y = 3;
+  tft.drawRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x,
+                    KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y,
+                    KEYPAD_BUTTON_H, KEYPAD_BUTTON_H,
+                    BUTTON_RADIUS, ILI9341_BLACK);
+  tft.fillRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1,
+                    KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y+1,
+                    KEYPAD_BUTTON_H-2, KEYPAD_BUTTON_H-2,
+                    BUTTON_RADIUS, KEYPAD_FILL_COLOR);
+  tft.setCursor(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1 + 14,
+                KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y + 30);
+  tft.setFont(FONT_BUTTON);
+  tft.setTextColor(STANDBY_FG);
+  tft.print("0");
+  hs_keypad[y*3 + x - 1].x = KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x;
+  hs_keypad[y*3 + x - 1].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
+
+  x = 2;
+  y = 3;
+  tft.drawRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x,
+                    KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y,
+                    KEYPAD_BUTTON_H, KEYPAD_BUTTON_H,
+                    BUTTON_RADIUS, ILI9341_BLACK);
+  tft.fillRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1,
+                    KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y+1,
+                    KEYPAD_BUTTON_H-2, KEYPAD_BUTTON_H-2,
+                    BUTTON_RADIUS, KEYPAD_FILL_COLOR);
+  tft.setCursor(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x+1 + 14,
+                KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y + 30);
+  tft.setFont(FONT_BUTTON);
+  tft.setTextColor(ILI9341_RED);
+  tft.print("#");
+  hs_keypad[y*3 + x - 1].x = KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x;
+  hs_keypad[y*3 + x - 1].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
+
+  // event loop
+  // flush any pending events & handle new ones
+//  event_flush();
+  while (true)
+  {
+    // get next event and handle it
+    VFOEvent *event = event_pop();
+
+    uint16_t x = event->x;
+    uint16_t y = event->y;
+
+    switch (event->event)
+    {
+      case event_Down:
+      Serial.printf("show_freq_keypad: event %s\n", event2display(event));
+        if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
+        {
+          Serial.printf("hs_handletouch() returned 'true', end of keypad\n");
+          display_frequency();
+          return;
+        }
+        break;
+      case event_Up:
+      case event_Drag:
+      case event_None:
+        break;
+    }
+  }
+}
+
+//-----------------------------------------------
 // Screen hotspot handlers.
 //-----------------------------------------------
 
 bool freq_hs_handler(HotSpot *hs_ptr)
 {
   Serial.printf("freq_hs_handler: hs_ptr->%s\n", hs_display(hs_ptr));
-  return false;
+  show_freq_keypad(hs_ptr->arg);
+  return true;
 }
 
 bool online_hs_handler(HotSpot *hs_ptr)
@@ -450,12 +619,10 @@ void loop()
       case event_Down:
         if (hs_handletouch(x, y, hs_mainscreen, MainScreenHSLen))
         {
-          Serial.printf("hs_handletouch() returned 'true'\n");
+          Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
+          display_frequency();
         }
-        else
-        {
-          Serial.printf("hs_handletouch() returned 'false'\n");
-        }
+
         break;
       case event_Up:
 //        display_frequency();
