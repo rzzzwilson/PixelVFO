@@ -10,8 +10,6 @@ enum Event
 {
   event_None,
   event_Down,
-  event_Up,
-  event_Drag
 };
 
 // an event

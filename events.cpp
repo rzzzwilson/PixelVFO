@@ -37,12 +37,12 @@ const char *event2display(VFOEvent *event)
     case event_Down:
       sprintf(buffer, "{event_Down, %d, %d}", event->x, event->y);
       break;
-    case event_Up:
-      sprintf(buffer, "{event_Up, %d, %d}", event->x, event->y);
-      break;
-    case event_Drag:
-      sprintf(buffer, "{event_Drag, %d, %d}", event->x, event->y);
-      break;
+//    case event_Up:
+//      sprintf(buffer, "{event_Up, %d, %d}", event->x, event->y);
+//      break;
+//    case event_Drag:
+//      sprintf(buffer, "{event_Drag, %d, %d}", event->x, event->y);
+//      break;
     default:
       sprintf(buffer, "UNKNOWN EVENT");
   }
@@ -76,9 +76,8 @@ void event_push(Event event, int x, int y)
   {
       event_dump_queue("ERROR: event queue full!");
       Serial.printf("Event queue full\n");
-
+      
       abort("ERROR: event queue full!");
-//      while (1);
   }
 }
 

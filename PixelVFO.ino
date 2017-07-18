@@ -9,7 +9,6 @@
 #include <XPT2046_Touchscreen.h>
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
-#include "ArialBold24pt7b.h"
 #include "events.h"
 #include "hotspot.h"
 
@@ -20,7 +19,7 @@
 #define SCREEN_HEIGHT   240
 
 // This is calibration data for the raw touch data to the screen coordinates
-#if 0
+#if 1
 // 2.8" calibration
 #define TS_MINX     200
 #define TS_MINY     340
@@ -28,7 +27,7 @@
 #define TS_MAXY     3895
 #endif
 
-#if 1
+#if 0
 // 2.2" calibration
 #define TS_MINX     170
 #define TS_MINY     180
@@ -61,7 +60,6 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define CHAR_HEIGHT         32
 #define MHZ_OFFSET_X        (FREQ_OFFSET_X + NUM_F_CHAR*CHAR_WIDTH + 10)
 
-//#define FONT_FREQ           (&ArialBold24pt7b)
 #define FONT_BUTTON         (&FreeSansBold12pt7b)
 #define FONT_FREQ           (&FreeSansBold24pt7b)
 
@@ -93,7 +91,6 @@ int ts_height = SCREEN_HEIGHT;
 #define ONLINE_BG2          0x4000
 #define STANDBY_BG          ILI9341_GREEN
 #define STANDBY_BG2         0x4000
-//#define ONLINE_FG           ILI9341_BLACK
 #define ONLINE_FG           ILI9341_GREEN
 #define STANDBY_FG           ILI9341_BLACK
 
@@ -103,7 +100,6 @@ int ts_height = SCREEN_HEIGHT;
 #define MENU_X              (ts_width - MENU_WIDTH)
 #define MENU_Y              (ts_height - MENU_HEIGHT)
 #define MENU_BG             ILI9341_GREEN
-//#define MENU_BG2            0x0400
 #define MENU_BG2            ILI9341_BLACK
 #define MENU_FG             ILI9341_BLACK
 
@@ -123,9 +119,8 @@ uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each charac
 // index of selected digit in frequency display
 int sel_digit = -1;
 
-uint32_t volatile msraw = 0x80000000;
-#define MIN_REPEAT_PERIOD   2
-bool volatile PenDown = false;
+uint32_t msraw = 0x80000000;
+#define MIN_REPEAT_PERIOD   100
 
 VFOState vfo_state = VFO_Standby;
 
@@ -137,41 +132,33 @@ VFOState vfo_state = VFO_Standby;
 
 void abort(const char *msg)
 {
+  // TODO: write message on the screen, with wrap-around
   while (1);
 }
 
 //----------------------------------------
 // Interrupt - pen went down or up.
 //
-// Maintain the correct PenDown state and call touch_read() if DOWN.
-// Also push a event_Up event if going UP.
+// Ignore quickly repeated interrupts and create an event_Down event.
 //----------------------------------------
 
 void touch_irq(void)
 {
-  static int last_x = 0;
-  static int last_y = 0;
   uint32_t now = millis();
+  static int last_x;
+  static int last_y;
 
   // ignore interrupt if too quick
-  if ((now - msraw) < MIN_REPEAT_PERIOD) return;
+  if ((now - msraw) < MIN_REPEAT_PERIOD)
+  {
+    msraw = now;
+    return;
+  }
   msraw = now;
 
-  if (digitalRead(TS_IRQ) == 0)
-  { // pen DOWN
-    if (!PenDown)
-    {
-      ts_read(&last_x, &last_y);
-      event_push(event_Down, last_x, last_y);
-    }
-    PenDown = true;
-  }
-  else
-  { // pen UP
-    if (PenDown)
-      event_push(event_Up, last_x, last_y);
-    PenDown = false;
-  }
+  // read touch position, add DOWN event to event queue
+  ts_read(&last_x, &last_y);
+  event_push(event_Down, last_x, last_y);
 }
 
 //-----------------------------------------------
@@ -206,7 +193,7 @@ void draw_thousands(void)
 }
 
 //-----------------------------------------------
-// Draw the basic screen
+// Routines to draw GUI components on the screen
 //-----------------------------------------------
 
 void drawOnline(void)
@@ -248,7 +235,6 @@ void draw_screen(void)
   // start drawing things that don't change
   tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   tft.setTextWrap(false);
-//  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
   tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
@@ -259,33 +245,10 @@ void draw_screen(void)
 }
 
 //-----------------------------------------------
-//-----------------------------------------------
-void ts_setRotation(uint8_t rot)
-{
-  ts_rotation = rot % 4;
-  switch (ts_rotation)
-  {
-    case 0:     // 'normal' portrait
-      ts_width = tft.width();
-      ts_height = tft.height();
-      break;
-    case 1:     // 'normal' landscape
-      ts_width = tft.height();
-      ts_height = tft.width();
-      break;
-    case 2:     // invert portrait
-      ts_width = tft.width();
-      ts_height = tft.height();
-      break;
-    case 3:     // invert landscape
-      ts_width = tft.height();
-      ts_height = tft.width();
-      break;
-  }
-  Serial.printf("ts_setRotation: rot=%d, ts_width=%d, ts_height=%d\n", rot, ts_width, ts_height);
-}
-
-//-----------------------------------------------
+// Get touch information, if anyu.
+//     x, y  pointers to cells to receive X and Y position
+// Returns 'true' if touch found - X and Y cells updated.
+// Returns 'false' if no touch - X and Y cells NOT updated.
 //-----------------------------------------------
 bool ts_read(int *x, int *y)
 {
@@ -298,7 +261,7 @@ bool ts_read(int *x, int *y)
   // Retrieve a point  
   TS_Point p = ts.getPoint();
 
-  if (p.z == 0)
+  if (p.z < 100)
   {
     return false;
   }
@@ -363,7 +326,7 @@ void setup(void)
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
   
   // link the TS_IRQ pin to its interrupt handler
-  attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);
   
   // set up the VFO frequency data structures
   frequency = 1000000L;
@@ -409,15 +372,15 @@ void setup(void)
 // We use an event loop here to handle the keypad events.
 //-----------------------------------------------
 
-#define KEYPAD_W      (KEYPAD_MARGIN*4 + KEYPAD_BUTTON_W*3)
-#define KEYPAD_H      (KEYPAD_MARGIN*5 + KEYPAD_BUTTON_H*4)
-#define KEYPAD_X      ((SCREEN_WIDTH - KEYPAD_W) / 2)
-#define KEYPAD_Y      (DEPTH_FREQ_DISPLAY + 1)
+#define KEYPAD_W            (KEYPAD_MARGIN*4 + KEYPAD_BUTTON_W*3)
+#define KEYPAD_H            (KEYPAD_MARGIN*5 + KEYPAD_BUTTON_H*4)
+#define KEYPAD_X            ((SCREEN_WIDTH - KEYPAD_W) / 2)
+#define KEYPAD_Y            (DEPTH_FREQ_DISPLAY + 1)
 #define KEYPAD_EDGE_COLOR   ILI9341_BLUE
 #define KEYPAD_FILL_COLOR   ILI9341_WHITE
-#define KEYPAD_BUTTON_W   44
-#define KEYPAD_BUTTON_H   44
-#define KEYPAD_MARGIN     2
+#define KEYPAD_BUTTON_W     44
+#define KEYPAD_BUTTON_H     44
+#define KEYPAD_MARGIN       2
 
 char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 
@@ -465,6 +428,10 @@ HotSpot hs_keypad[] =
 
 #define KeypadHSLen   (sizeof(hs_keypad)/sizeof(hs_keypad[0]))
 
+//-----------------------------------------------
+// Draw the keypad.
+// TODO: move to own file, make simpler.
+//-----------------------------------------------
 
 void show_freq_keypad(int offset)
 {
@@ -537,27 +504,18 @@ void show_freq_keypad(int offset)
   hs_keypad[y*3 + x - 1].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
 
   // event loop
-  // flush any pending events & handle new ones
-  event_flush();
   while (true)
   {
     // get next event and handle it
     VFOEvent *event = event_pop();
-    if (event->event == event_None)
-      continue;
-
-    uint16_t x = event->x;
-    uint16_t y = event->y;
 
     switch (event->event)
     {
       case event_Down:
         Serial.printf("show_freq_keypad: event %s\n", event2display(event));
-        if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
+        if (hs_handletouch(event->x, event->y, hs_keypad, KeypadHSLen))
         {
           Serial.printf("hs_handletouch() returned 'true', end of keypad\n");
-//          draw_screen();
-//          display_frequency();
           return;
         }
         break;
@@ -601,24 +559,17 @@ bool menu_hs_handler(HotSpot *hs_ptr)
 //-----------------------------------------------
 void loop()
 {
- // handle all events in the queue
+  // handle all events in the queue
   while (true)
   {
     // get next event and handle it
     VFOEvent *event = event_pop();
 
-    if (event->event == event_None)
-      break;
-
-    uint16_t x = event->x;
-    uint16_t y = event->y;
-
-    Serial.printf("Event %s\n", event2display(event));
-    
     switch (event->event)
     {
       case event_Down:
-        if (hs_handletouch(x, y, hs_mainscreen, MainScreenHSLen))
+        Serial.printf("Event %s\n", event2display(event));
+        if (hs_handletouch(event->x, event->y, hs_mainscreen, MainScreenHSLen))
         {
           Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
@@ -626,9 +577,8 @@ void loop()
           event_flush();
         }
         break;
-      case event_Up:
-      case event_Drag:
-        break;
+      case event_None:
+        return;
       default:
         abort("Unrecognized event!?");
     }
