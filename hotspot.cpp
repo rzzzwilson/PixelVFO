@@ -57,21 +57,14 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 bool hs_handletouch(int touch_x, int touch_y,
                     HotSpot *hs, int hs_len)
 {
-//  Serial.printf("hs_handletouch: touch_x=%d, touch_y=%d,\n", touch_x, touch_y);
-//  hs_dump("HS:", hs, hs_len);
-                
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
-//    Serial.printf("Check (touch_x,touch_y) inside (%d, %d, %d, %d)",
-//                  hs->x, hs->y, hs->x + hs->w, hs->y + hs->h);
     if ((touch_x < hs->x) || (touch_x > hs->x + hs->w) ||
         (touch_y < hs->y) || (touch_y > hs->y + hs->h))
     {
-//      Serial.printf("  no\n");
       continue;
     }
 
-//    Serial.printf("  INSIDE!\n");
     return (hs->handler)(hs);
   }
 
