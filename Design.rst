@@ -17,11 +17,18 @@ The main hardware components for the VFO are:
 Operation
 ---------
 
-The VFO has two modes: 'ONLINE' and 'standby'.
+The VFO has two modes: 'ONLINE' and 'standby'.  The status will be shown
+in a button on the screen.  Clicking the button will toggle the status.
 
-The displayed frequency will be changed by ...
+The displayed frequency will be changed by clicking on a frequency
+digit, which will present a keypad (digits 1->9, 0, #).  Clicking on
+a keypad digit will change the highlighted frequency digit and move to
+the next digit.  Changing the last digit in the frequency buffer will
+dismiss the keypad.  Pressing the '#' keypad digit will dismiss the
+keypad.  Selecting any digit in the frequency buffer will move the 
+highlight to that digit.
 
-The menu will be shown after ...
+The menu will be shown after pressing the 'Menu' button.
 
 Touchscreen interrupts
 ----------------------
@@ -44,10 +51,9 @@ controlled via SPI and has these accessible lines:
 +---------+-------------------------------+
 
 The code handling the touchscreen interface will use the standard pins
-to read the touchscreen status.  The T_IRQ pin was thought to be useful
-to determine if the screen is being touched or not, but was found to
-have lots pf "bounce", so we aren't using it at the moment.  This
-profoundly affects the remaining design below.
+to read the touchscreen status.  The T_IRQ pin will be treated as an
+interrupt line and will place "pen down" events in the system event
+queue.
 
 The touchscreen code uses the SPI interface and the T_IRQ interrupt to
 create logical events.  These events are held in a *VFOEvent* structure::
@@ -65,8 +71,6 @@ where the *Event* type is defined::
     {
       vfo_None,
       vfo_Down,
-      vfo_Up,
-      vfo_Drag
     };
 
 Every event has associated X and Y coordinate values.
@@ -78,12 +82,6 @@ Every event has associated X and Y coordinate values.
 +---------------+-------------------------------------------+
 | vfo_Down      | The pen went down                         |
 +---------------+-------------------------------------------+
-| vfo_Up        | The pen went up                           |
-+---------------+-------------------------------------------+
-| vfo_Drag      | Movement while the pen is down            |
-+---------------+-------------------------------------------+
-
-Note: The initial design **won't** use the *vfo_Drag* event.
 
 Event Queue
 -----------
