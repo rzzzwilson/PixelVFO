@@ -52,10 +52,19 @@ XPT2046_Touchscreen ts(TS_CS);
 #define TFT_CS      10
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);  
 
-// display constants - offsets, colours, etc
-#define FONT_BUTTON         (&FreeSansBold12pt7b)
-#define FONT_FREQ           (&FreeSansBold24pt7b)
+// constants for main screen layout
+#define NUM_F_CHAR            8     // number digits in frequency display
+#define CHAR_WIDTH            27    // width of each frequency digit
+#define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
+#define FREQ_OFFSET_Y         40    // offset from top of frequency digits
+#define FREQ_OFFSET_X         40    // offset from left of frequency digits
+#define MHZ_OFFSET_X          257   // offset from left of the 'Hz' units
 
+// display constants - offsets, colours, etc
+#define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
+#define FONT_BUTTON         (&FreeSansBold12pt7b) // font for button labels
+
+// various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 #define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
 
@@ -67,11 +76,6 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define FREQ_BG             ILI9341_WHITE
 #define FREQ_SEL_BG         ILI9341_GREEN
 #define BOTTOM_BG           ILI9341_WHITE
-
-// touchscreen stuff
-int ts_rotation = 0;
-int ts_width = SCREEN_WIDTH;
-int ts_height = SCREEN_HEIGHT;
 
 // ONLINE button definitions
 #define BUTTON_RADIUS       5
@@ -96,6 +100,11 @@ int ts_height = SCREEN_HEIGHT;
 #define MENU_BG2            ILI9341_BLACK
 #define MENU_FG             ILI9341_BLACK
 
+// touchscreen stuff
+int ts_rotation = 0;
+int ts_width = SCREEN_WIDTH;
+int ts_height = SCREEN_HEIGHT;
+
 // the VFO states
 enum VFOState
 {
@@ -110,7 +119,7 @@ unsigned long frequency;                // frequency as a long integer
 uint16_t char_x_offset[NUM_F_CHAR + 1]; // x offset for start/end of each character on display
 
 // index of selected digit in frequency display
-int sel_digit = -1;
+int freq_digit_select = -1;
 
 uint32_t msraw = 0x80000000;
 #define MIN_REPEAT_PERIOD   100
@@ -154,6 +163,82 @@ void touch_irq(void)
   event_push(event_Down, last_x, last_y);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// Code to handle the 'frequency' widget at screen top
+//////////////////////////////////////////////////////////////////////////////
+
+//-----------------------------------------------
+// Draw the frequency byte buffer to the screen.
+//     select  index of digit to highlight
+// Updates all digits on the screen.  Skips leading zeros.
+//-----------------------------------------------
+
+void freq_show(int select=-1)
+{
+  bool leading_space = true;
+
+  tft.setFont(FONT_FREQ);
+  
+  for (int i = 0; i < NUM_F_CHAR; ++i)
+  {
+    if (i == select)
+      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_SEL_BG);
+    else
+      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_BG);
+                   
+    if ((freq_display[i] != '0') || !leading_space)
+    {
+      tft.drawChar(char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
+      leading_space = false;
+    }
+  }
+}
+
+//-----------------------------------------------
+// Set a digit of the frequency display.
+//     offset     offset into the frequency digits buffer
+//     new_digit  new digit, binary [0-9]
+// Also updates the top of screen display.
+//-----------------------------------------------
+
+void freq_set_digit(int offset, int new_digit)
+{
+  Serial.printf("freq_set_digit: offset=%d, new_digit=%d\n", offset, new_digit);
+  freq_display[offset] = new_digit;
+  tft.setFont(FONT_FREQ);
+  tft.drawChar(char_x_offset[offset], FREQ_OFFSET_Y,
+               freq_display[offset], FREQ_FG, FREQ_BG, 1);
+}
+
+//-----------------------------------------------
+// Draw a selected digit in the frequency display.
+//     select  index of digit to highlight
+//-----------------------------------------------
+
+void freq_select(int select)
+{
+  tft.fillRect(char_x_offset[select]-1, 2,
+               CHAR_WIDTH+1, DEPTH_FREQ_DISPLAY-4, FREQ_SEL_BG);
+  tft.setFont(FONT_FREQ);
+  tft.drawChar(char_x_offset[select], FREQ_OFFSET_Y,
+               freq_display[select], FREQ_FG, FREQ_BG, 1);
+}
+
+//-----------------------------------------------
+// Unselect a digit in the frequency display.
+//     select  index of digit to unselect
+//-----------------------------------------------
+
+void freq_unselect(int select)
+{
+  Serial.printf("freq_unselect: select=%d\n", select);
+  tft.fillRect(char_x_offset[select]-1, 2,
+               CHAR_WIDTH+1, DEPTH_FREQ_DISPLAY-4, FREQ_BG);
+  tft.setFont(FONT_FREQ);
+  tft.drawChar(char_x_offset[select], FREQ_OFFSET_Y,
+               freq_display[select], FREQ_FG, FREQ_BG, 1);
+}
+
 //-----------------------------------------------
 // Fills the frequency char buffer from a given frequency.
 //
@@ -176,7 +261,7 @@ void freq_to_buff(char *buff, unsigned long freq)
 }
 
 //-----------------------------------------------
-// Draw the 'thousands' markers
+// Draw the frequency 'thousands' markers
 //-----------------------------------------------
 
 void draw_thousands(void)
@@ -185,8 +270,13 @@ void draw_thousands(void)
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// Code to handle the 'online' and 'menu' buttons.
+//////////////////////////////////////////////////////////////////////////////
+
 //-----------------------------------------------
-// Routines to draw GUI components on the screen
+// Draw the ONLINE/standby button.
+// Uses global 'vfo_state' to determine button text.
 //-----------------------------------------------
 
 void drawOnline(void)
@@ -210,6 +300,10 @@ void drawOnline(void)
     tft.print("ONLINE");
   }
 }
+
+//-----------------------------------------------
+// Draw the Menu button.
+//-----------------------------------------------
 
 void drawMenu(void)
 {
@@ -266,33 +360,6 @@ bool ts_read(int *x, int *y)
   return true;
 }
 
-//-----------------------------------------------
-// Draw the frequency byte buffer to the screen.
-//     select  index of digit to highlight
-// Updates all digits on the screen.  Skips leading zeros.
-//-----------------------------------------------
-
-void display_frequency(int select=-1)
-{
-  bool leading_space = true;
-
-  tft.setFont(FONT_FREQ);
-  
-  for (int i = 0; i < NUM_F_CHAR; ++i)
-  {
-    if (i == select)
-      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_SEL_BG);
-    else
-      tft.fillRect(char_x_offset[i], 2, CHAR_WIDTH+2, DEPTH_FREQ_DISPLAY-4, FREQ_BG);
-                   
-    if ((freq_display[i] != '0') || !leading_space)
-    {
-      tft.drawChar(char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
-      leading_space = false;
-    }
-  }
-}
-
 // main screen HotSpot definitions
 HotSpot hs_mainscreen[] =
 {
@@ -316,6 +383,7 @@ HotSpot hs_mainscreen[] =
 
 bool freq_hs_handler(HotSpot *hs_ptr)
 {
+  freq_digit_select = hs_ptr->arg;
   keypad_show(hs_ptr->arg);
   return true;
 }
@@ -356,9 +424,22 @@ bool menu_hs_handler(HotSpot *hs_ptr)
 
 char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 
+//-----------------------------------------------
+// User pressed keypad button.
+//     hs  address of hotspot data object
+// Update the frequency display.
+//-----------------------------------------------
+
 bool keypad_handler(HotSpot *hs)
 {
   Serial.printf("keypad_handler: called, arg=%d\n", hs->arg);
+
+  freq_unselect(freq_digit_select);
+  freq_set_digit(freq_digit_select, hs->arg);
+  if (freq_digit_select < NUM_F_CHAR)
+    freq_digit_select += 1;
+  freq_select(freq_digit_select);
+
   return false;
 }
 
@@ -415,6 +496,7 @@ HotSpot hs_keypad[] =
 
 void keypad_button_draw(char ch, int x, int y)
 {
+  // draw the keypad button
   tft.drawRoundRect(KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x,
                     KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y,
                     KEYPAD_BUTTON_H, KEYPAD_BUTTON_H,
@@ -429,6 +511,7 @@ void keypad_button_draw(char ch, int x, int y)
   tft.setTextColor(STANDBY_FG);
   tft.print(ch);
 
+  // fill in the X & Y position in the hotspot data
   hs_keypad[y*3 + x].x = KEYPAD_X+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_W)*x;
   hs_keypad[y*3 + x].y = KEYPAD_Y+KEYPAD_MARGIN+(KEYPAD_MARGIN+KEYPAD_BUTTON_H)*y;
 }
@@ -441,7 +524,7 @@ void keypad_button_draw(char ch, int x, int y)
 void keypad_show(int offset)
 {
   // highlight the frequency digit we are changing
-  display_frequency(offset);
+  freq_select(offset);
 
   // draw keypad basic outline
   tft.fillRoundRect(KEYPAD_X, KEYPAD_Y, KEYPAD_W, KEYPAD_H, BUTTON_RADIUS, ILI9341_BLACK);
@@ -524,7 +607,7 @@ void setup(void)
 #endif
 
   // show the frequency
-  display_frequency();
+  freq_show();
 }
 
 //-----------------------------------------------
@@ -546,7 +629,7 @@ void loop()
         {
           Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
-          display_frequency();
+          freq_show();
           event_flush();
         }
         break;
