@@ -24,9 +24,9 @@ The displayed frequency will be changed by clicking on a frequency
 digit, which will present a keypad (digits 1->9, 0, #).  Clicking on
 a keypad digit will change the highlighted frequency digit and move to
 the next digit.  Changing the last digit in the frequency buffer will
-dismiss the keypad.  Pressing the '#' keypad digit will dismiss the
-keypad.  Selecting any digit in the frequency buffer will move the 
-highlight to that digit.
+result in the highlight remaining on the last digit.  Pressing the '#'xi
+keypad digit will dismiss the keypad.  Selecting any digit in the
+frequency buffer will move the highlight to that digit.
 
 The menu will be shown after pressing the 'Menu' button.
 
@@ -50,7 +50,7 @@ controlled via SPI and has these accessible lines:
 | T_IRQ   | pen, LOW means pen down       |
 +---------+-------------------------------+
 
-The code handling the touchscreen interface will use the standard pins
+The code handling the touchscreen interface will use the standard SPI pins
 to read the touchscreen status.  The T_IRQ pin will be treated as an
 interrupt line and will place "pen down" events in the system event
 queue.
