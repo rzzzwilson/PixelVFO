@@ -65,6 +65,7 @@ bool hs_handletouch(int touch_x, int touch_y,
       continue;
     }
 
+    Serial.printf(F("hs_handletouch: calling hs->handler=%p\n"), hs->handler);
     return (hs->handler)(hs);
   }
 
