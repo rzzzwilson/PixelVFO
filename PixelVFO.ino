@@ -63,6 +63,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 // display constants - offsets, colours, etc
 #define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
 #define FONT_BUTTON         (&FreeSansBold12pt7b) // font for button labels
+#define FONT_MENU           (&FreeSansBold12pt7b) // font for menuitems
 
 // various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
@@ -96,9 +97,9 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define MENU_HEIGHT         35
 #define MENU_X              (ts_width - MENU_WIDTH)
 #define MENU_Y              (ts_height - MENU_HEIGHT)
-#define MENU_BG             ILI9341_GREEN
-#define MENU_BG2            ILI9341_BLACK
-#define MENU_FG             ILI9341_BLACK
+#define MENU_BG             ILI9341_BLACK
+#define MENU_BG2            ILI9341_GREEN
+#define MENU_FG             ILI9341_BLUE
 
 // constants for the menu system
 #define MENUITEM_HEIGHT     35
@@ -166,205 +167,6 @@ void touch_irq(void)
   // read touch position, add DOWN event to event queue
   ts_read(&last_x, &last_y);
   event_push(event_Down, last_x, last_y);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-// Code to handle the PixelVFO menus
-//////////////////////////////////////////////////////////////////////////////
-
-// handler for selection of an item
-typedef void (*ItemAction)(struct Menu *, int);
-
-// structure defining a menu item
-struct MenuItem
-{
-  const char *title;          // menu item display text
-  struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
-  ItemAction action;          // if not NULL, address of action function
-};
-
-// A structure defining a menu
-struct Menu
-{
-  const char *title;          // title displayed on menu page
-  int num_items;              // number of items in the array below
-  struct MenuItem **items;    // array of pointers to MenuItem data
-};
-
-//----------------------------------------
-// dump a MenuItem to the console
-// only called from dump_menu()
-//----------------------------------------
-
-void dump_menuitem(struct MenuItem *menuitem)
-{
-  Serial.printf(F("  menuitem address=%08x\n"), menuitem);
-  Serial.printf(F("  title=%s\n"), menuitem->title);
-  Serial.printf(F("  menu=%08x\n"), menuitem->menu);
-  Serial.printf(F("  action=%08x\n"), menuitem->action);
-}
-
-//----------------------------------------
-// dump a Menu and contained MenuItems to the console
-//----------------------------------------
-
-void dump_menu(const char *msg, struct Menu *menu)
-{
-  Serial.printf(F("----------------- Menu --------------------\n"));
-  Serial.printf(F("%s\n"), msg);
-  Serial.printf(F("menu address=%08x\n"), menu);
-  Serial.printf(F("  title=%s\n"), menu->title);
-  Serial.printf(F("  num_items=%d\n"), menu->num_items);
-  Serial.printf(F("  items address=%08x\n"), menu->items);
-  
-  for (int i = 0; i < menu->num_items; ++i)
-    dump_menuitem(menu->items[i]);
-    
-  Serial.printf(F("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"));
-}
-
-//----------------------------------------
-// Handle the menu 'BACK' hotspot.
-//     pointer to the hotspot we are actioning
-//     arg     the integer arg from the menu handler
-//----------------------------------------
-
-bool hs_menuback_handler(HotSpot *hs, int arg)
-{
-  
-}
-
-//----------------------------------------
-// Handle the menu 'select menuitem' hotspot
-//     pointer to the hotspot we are actioning
-//     row     index number of the menuitem row selected
-//----------------------------------------
-
-bool hs_menuitem_handler(HotSpot *hs, int row)
-{
-  
-}
-
-//----------------------------------------
-// Draw a menu on the screen.
-//     menu  pointer to a Menu structure
-// Only draws the top row.
-//----------------------------------------
-
-void menu_draw(struct Menu *menu)
-{
-  // clear screen and write menu title on upper row
-#if 0
-  tft.clear();
-  tft.setCursor(0, 0);
-  tft.print(menu->title);
-#endif
-}
-
-//----------------------------------------
-// Draw a standard menuitem on the screen.
-//     menu      pointer to a Menu structure
-//     item_num  the item number to show
-//     row       menu row to draw menuitem on
-// Custome menuitems are drawn by their handler.
-//----------------------------------------
-
-void menuitem_draw(struct Menu *menu, int item_num, int row)
-{
-  // figure out max length of item strings
-  int max_len = 0;
-  int row_offset = MENUITEM_HEIGHT*row;
-
-  for (int i = 0; i < menu->num_items; ++ i)
-  {
-    int16_t x1;
-    int16_t y1;
-    uint16_t w;
-    uint16_t h;
-    
-    tft.getTextBounds((char *) menu->items[i]->title, 30, 30, &x1, &y1, &w, &h);
-
-    if (w > max_len)
-        max_len = w;
-  }
-
-  // write indexed item on lower row, right-justified
-  tft.fillRect(0, 2, ts_width, DEPTH_FREQ_DISPLAY+row_offset, SCREEN_BG);
-  
-  tft.setCursor(max_len, DEPTH_FREQ_DISPLAY+row_offset);
-  tft.print(menu->items[item_num]->title);
-}
-
-// menu HotSpot definitions
-HotSpot hs_menu[] =
-{
-  {0, 0, ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 1},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
-};  
-//----------------------------------------
-// Handle a menu.
-//     menu      pointer to a defining Menu structure
-//
-// Handle events in the loop here.
-// This code doesn't see events handled in any *_action() routine.
-//----------------------------------------
-
-void menu_show(struct Menu *menu)
-{
-  int item_num = 0;     // index of the menuitem to show
-
-  // draw the menu page
-  menu_draw(menu);
-  for (int row = 0; row < min(MAXMENUITEMROWS, menu->num_items); ++row)
-  {
-      menuitem_draw(menu, item_num, row);
-  }
-
-  // get rid of any stray events to this point
-  event_flush();
-
-  while (true)
-  {
-    // handle any pending event
-    if (event_pending() > 0)
-    {
-      // get next event and handle it
-      VFOEvent *event = event_pop();
-      Serial.printf(F("menu_show loop: event=%s\n"), event2display(event));
-
-      switch (event->event)
-      {
-        case event_Down:
-          Serial.printf(F("Event %s\n"), event2display(event));
-          if (hs_handletouch(event->x, event->y, hs_menu, MenuHSLen))
-          {
-            Serial.printf(F("hs_handletouch() returned 'true', refreshing display\n"));
-            draw_screen();
-            freq_show();
-            //event_flush();
-          }
-          break;
-        case event_None:
-          return;
-        default:
-          abort("Unrecognized event!?");
-      }
-    }
-  }
-}
-
-//----------------------------------------
-// Show that *something* happened.
-// Flash the screen in a possibly eye-catching way.
-//----------------------------------------
-
-void display_flash(void)
-{
-  Serial.printf("display_flash: called\n");
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -464,6 +266,296 @@ void draw_thousands(void)
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
 }
+
+//////////////////////////////////////////////////////////////////////////////
+// Code to handle the PixelVFO menus
+//////////////////////////////////////////////////////////////////////////////
+
+// handler for selection of an item
+typedef void (*ItemAction)(struct Menu *, int);
+
+// structure defining a menu item
+struct MenuItem
+{
+  const char *title;          // menu item display text
+  struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
+  ItemAction action;          // if not NULL, address of action function
+};
+
+// A structure defining a menu
+struct Menu
+{
+  const char *title;          // title displayed on menu page
+  int num_items;              // number of items in the array below
+  struct MenuItem **items;    // array of pointers to MenuItem data
+};
+
+//----------------------------------------
+// dump a MenuItem to the console
+// only called from dump_menu()
+//----------------------------------------
+
+void dump_menuitem(struct MenuItem *menuitem)
+{
+  Serial.printf(F("  menuitem address=%08x\n"), menuitem);
+  Serial.printf(F("  title=%s\n"), menuitem->title);
+  Serial.printf(F("  menu=%08x\n"), menuitem->menu);
+  Serial.printf(F("  action=%08x\n"), menuitem->action);
+}
+
+//----------------------------------------
+// dump a Menu and contained MenuItems to the console
+//----------------------------------------
+
+void dump_menu(const char *msg, struct Menu *menu)
+{
+  Serial.printf(F("----------------- Menu --------------------\n"));
+  Serial.printf(F("%s\n"), msg);
+  Serial.printf(F("menu address=%08x\n"), menu);
+  Serial.printf(F("  title=%s\n"), menu->title);
+  Serial.printf(F("  num_items=%d\n"), menu->num_items);
+  Serial.printf(F("  items address=%08x\n"), menu->items);
+  
+  for (int i = 0; i < menu->num_items; ++i)
+    dump_menuitem(menu->items[i]);
+    
+  Serial.printf(F("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"));
+}
+
+//----------------------------------------
+// Handle the menu 'BACK' hotspot.
+//     pointer to the hotspot we are actioning
+//----------------------------------------
+
+bool hs_menuback_handler(HotSpot *hs)
+{
+  return false;
+}
+
+//----------------------------------------
+// Handle the menu 'select menuitem' hotspot
+//     pointer to the hotspot we are actioning
+//----------------------------------------
+
+bool hs_menuitem_handler(HotSpot *hs)
+{
+  return false;
+}
+
+//----------------------------------------
+// Draw a menu on the screen.
+//     menu  pointer to a Menu structure
+// Only draws the top row.
+//----------------------------------------
+
+void menu_draw(struct Menu *menu)
+{
+  // clear screen and write menu title on upper row
+
+  tft.fillScreen(SCREEN_BG);
+  tft.setTextWrap(false);
+  tft.setFont(FONT_MENU);
+
+  // start drawing things that don't change
+  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
+  tft.setTextColor(MENU_FG);
+
+  // draw menuitems
+  for (int i = 0; i < menu->num_items; ++ i)
+  {
+    int16_t x1;
+    int16_t y1;
+    uint16_t w;
+    uint16_t h;
+    int menuitem_y = DEPTH_FREQ_DISPLAY + i*MENUITEM_HEIGHT + MENUITEM_HEIGHT;
+    
+    tft.getTextBounds((char *) menu->items[i]->title, 0, 0, &x1, &y1, &w, &h);
+
+    // write indexed item on lower row, right-justified
+    tft.fillRect(0, menuitem_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
+    tft.setCursor(ts_width - w, menuitem_y);
+    tft.print(menu->items[i]->title);
+  }
+
+  
+}
+
+//----------------------------------------
+// Draw a standard menuitem on the screen.
+//     menu      pointer to a Menu structure
+//     item_num  the item number to show
+//     row       menu row to draw menuitem on
+// Custome menuitems are drawn by their handler.
+//----------------------------------------
+
+void menuitem_draw(struct Menu *menu, int item_num, int row)
+{
+  // figure out max length of item strings
+  int max_len = 0;
+  int row_offset = MENUITEM_HEIGHT*row;
+
+  for (int i = 0; i < menu->num_items; ++ i)
+  {
+    int16_t x1;
+    int16_t y1;
+    uint16_t w;
+    uint16_t h;
+    
+    tft.getTextBounds((char *) menu->items[i]->title, 30, 30, &x1, &y1, &w, &h);
+
+    if (w > max_len)
+        max_len = w;
+  }
+
+  // write indexed item on lower row, right-justified
+  tft.fillRect(0, 2, ts_width, DEPTH_FREQ_DISPLAY+row_offset, SCREEN_BG);
+  
+  tft.setCursor(max_len, DEPTH_FREQ_DISPLAY+row_offset);
+  tft.print(menu->items[item_num]->title);
+}
+
+// menu HotSpot definitions
+HotSpot hs_menu[] =
+{
+  {0, 0, ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 0},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 1},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
+};
+
+#define MenuHSLen   (sizeof(hs_menu)/sizeof(hs_menu[0]))
+
+//----------------------------------------
+// Handle a menu.
+//     menu  pointer to a defining Menu structure
+//
+// Handle events in the loop here.
+// This code doesn't see events handled in any *_action() routine.
+//----------------------------------------
+
+void menu_show(struct Menu *menu)
+{
+  Serial.printf(F("menu_show: called\n"));
+  
+  // draw the menu page
+  menu_draw(menu);
+
+  // get rid of any stray events to this point
+  event_flush();
+
+  while (true)
+  {
+    // handle any pending event
+    if (event_pending() > 0)
+    {
+      // get next event and handle it
+      VFOEvent *event = event_pop();
+      Serial.printf(F("menu_show loop: event=%s\n"), event2display(event));
+
+      switch (event->event)
+      {
+        case event_Down:
+          Serial.printf(F("Event %s\n"), event2display(event));
+          if (hs_handletouch(event->x, event->y, hs_menu, MenuHSLen))
+          {
+            Serial.printf(F("hs_handletouch() returned 'true', refreshing display\n"));
+            draw_screen();
+            freq_show();
+            //event_flush();
+          }
+          break;
+        case event_None:
+          return;
+        default:
+          abort("Unrecognized event!?");
+      }
+    }
+  }
+}
+
+//----------------------------------------
+// Show that *something* happened.
+// Flash the screen in a possibly eye-catching way.
+//----------------------------------------
+
+void display_flash(void)
+{
+  Serial.printf("display_flash: called\n");
+}
+
+//-----------------------------------------------
+// Menuitem action handlers
+//-----------------------------------------------
+
+void reset_no_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("reset_no_action: called\n"));
+}
+
+void reset_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("reset_action: called\n"));
+}
+
+void brightness_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("brightness_action: called\n"));
+}
+
+void calibrate_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("calibrate_action: called\n"));
+}
+
+void saveslot_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("saveslot_action: called\n"));
+}
+
+void restoreslot_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("credits_action: called\n"));
+}
+
+void deleteslot_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("restoreslot_action: called\n"));
+}
+
+void credits_action(struct Menu *menu, int item_num)
+{
+  Serial.printf(F("credits_action: called\n"));
+}
+
+//-----------------------------------------------
+// Define the PixelVFO menu system
+//-----------------------------------------------
+
+struct MenuItem mi_reset_no = {"No", NULL, &reset_no_action};
+struct MenuItem mi_reset_yes = {"Yes", NULL, &reset_action};
+struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
+struct Menu reset_menu = {"Reset all", ALEN(mia_reset), mia_reset};
+
+struct MenuItem mi_brightness = {"Brightness", NULL, &brightness_action};
+struct MenuItem mi_calibrate = {"Calibrate", NULL, &calibrate_action};
+struct MenuItem *mia_settings[] = {&mi_brightness, &mi_calibrate};
+struct Menu settings_menu = {"Settings", ALEN(mia_settings), mia_settings};
+
+struct MenuItem mi_saveslot = {"Save slot", NULL, &saveslot_action};
+struct MenuItem mi_restoreslot = {"Restore slot", NULL, &restoreslot_action};
+struct MenuItem mi_deleteslot = {"Delete slot", NULL, &deleteslot_action};
+struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
+struct Menu slots_menu = {"Slots", ALEN(mia_slots), mia_slots};
+
+struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
+struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
+struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
+struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
+struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
+struct Menu menu_main = {"Menu", ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
 // Code to handle the 'online' and 'menu' buttons.
@@ -620,6 +712,7 @@ bool online_hs_handler(HotSpot *hs_ptr)
 bool menu_hs_handler(HotSpot *hs_ptr)
 {
   Serial.printf("menu_hs_handler: would display menu\n");
+  menu_show(&menu_main);
   return true;
 }
 
@@ -793,37 +886,6 @@ void keypad_show(int offset)
 }
 
 //-----------------------------------------------
-// Define the PixelVFO menu system
-//-----------------------------------------------
-
-struct MenuItem mi_reset_no = {"No", NULL, &reset_no_action};
-struct MenuItem mi_reset_yes = {"Yes", NULL, &reset_action};
-struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
-struct Menu reset_menu = {"Reset all", ALEN(mia_reset), mia_reset};
-
-struct MenuItem mi_brightness = {"Brightness", NULL, &brightness_action};
-struct MenuItem mi_contrast = {"Contrast", NULL, &contrast_action};
-struct MenuItem mi_holdclick = {"Hold click", NULL, &holdclick_action};
-struct MenuItem mi_doubleclick = {"Double click", NULL, &doubleclick_action};
-struct MenuItem mi_calibrate = {"Calibrate", NULL, &calibrate_action};
-struct MenuItem *mia_settings[] = {&mi_brightness, &mi_contrast, &mi_holdclick,
-                                   &mi_doubleclick, &mi_calibrate};
-struct Menu settings_menu = {"Settings", ALEN(mia_settings), mia_settings};
-
-struct MenuItem mi_saveslot = {"Save slot", NULL, &saveslot_action};
-struct MenuItem mi_restoreslot = {"Restore slot", NULL, &restoreslot_action};
-struct MenuItem mi_deleteslot = {"Delete slot", NULL, &deleteslot_action};
-struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
-struct Menu slots_menu = {"Slots", ALEN(mia_slots), mia_slots};
-
-struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
-struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
-struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
-struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
-struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
-struct Menu menu_main = {"Menu", ALEN(mia_main), mia_main};
-
-//-----------------------------------------------
 // Setup the whole shebang.
 //-----------------------------------------------
 
@@ -886,6 +948,7 @@ void loop()
     {
       case event_Down:
         Serial.printf("Event %s\n", event2display(event));
+        hs_dump("main loop:", hs_mainscreen, MainScreenHSLen);
         if (hs_handletouch(event->x, event->y, hs_mainscreen, MainScreenHSLen))
         {
           Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
