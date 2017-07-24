@@ -8,6 +8,7 @@
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
 #include <Fonts/FreeSansBold12pt7b.h>
+#include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 #include "PixelVFO.h"
 #include "events.h"
@@ -63,7 +64,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 // display constants - offsets, colours, etc
 #define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
 #define FONT_BUTTON         (&FreeSansBold12pt7b) // font for button labels
-#define FONT_MENU           (&FreeSansBold12pt7b) // font for menuitems
+#define FONT_MENU           (&FreeSansBold18pt7b) // font for menuitems
+#define FONT_MENUITEM       (&FreeSansBold12pt7b) // font for menuitems
 
 // various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
@@ -93,17 +95,28 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define STANDBY_FG           ILI9341_BLACK
 
 // MENU button definitions
-#define MENU_WIDTH          110
-#define MENU_HEIGHT         35
-#define MENU_X              (ts_width - MENU_WIDTH)
-#define MENU_Y              (ts_height - MENU_HEIGHT)
-#define MENU_BG             ILI9341_BLACK
-#define MENU_BG2            ILI9341_GREEN
-#define MENU_FG             ILI9341_BLUE
+#define MENUBTN_WIDTH          110
+#define MENUBTN_HEIGHT         35
+#define MENUBTN_X              (ts_width - MENUBTN_WIDTH)
+#define MENUBTN_Y              (ts_height - MENUBTN_HEIGHT)
+#define MENUBTN_BG             ILI9341_GREEN
+#define MENUBTN_FG             ILI9341_BLUE
 
 // constants for the menu system
+#define MENU_FG             ILI9341_BLACK
+#define MENU_BG             ILI9341_GREEN
 #define MENUITEM_HEIGHT     35
 #define MAXMENUITEMROWS     5
+
+
+#define MENUBACK_WIDTH      80
+#define MENUBACK_HEIGHT     35
+#define MENUBACK_FG         ILI9341_BLACK
+#define MENUBACK_BG         ILI9341_BLACK
+#define MENUBACK_BG2        ILI9341_GREEN
+#define MENUBACK_X          (ts_width - MENUBACK_WIDTH - 1)
+#define MENUBACK_Y          ((DEPTH_FREQ_DISPLAY - MENUBACK_HEIGHT)/2)
+
 
 // macro to get number of elements in an array
 #define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
@@ -182,6 +195,7 @@ void touch_irq(void)
 
 void freq_show(int select=-1)
 {
+  Serial.printf("freq_show: select=%d\n", select);
   bool leading_space = true;
 
   tft.setFont(FONT_FREQ);
@@ -199,6 +213,7 @@ void freq_show(int select=-1)
       leading_space = false;
     }
   }
+  Serial.println(F("freq_show: finished"));
 }
 
 //-----------------------------------------------
@@ -292,32 +307,33 @@ struct Menu
 
 //----------------------------------------
 // dump a MenuItem to the console
-// only called from dump_menu()
+// only called from menu_dump()
 //----------------------------------------
 
-void dump_menuitem(struct MenuItem *menuitem)
+void menu_item_dump(struct MenuItem *menuitem)
 {
-  Serial.printf(F("  menuitem address=%08x\n"), menuitem);
-  Serial.printf(F("  title=%s\n"), menuitem->title);
-  Serial.printf(F("  menu=%08x\n"), menuitem->menu);
-  Serial.printf(F("  action=%08x\n"), menuitem->action);
+  Serial.printf(F("  menuitem address=%08x, "), menuitem);
+  Serial.printf(F("title='%s', "), menuitem->title);
+  Serial.printf(F("menu=%08x, "), menuitem->menu);
+  Serial.printf(F("action=%08x\n"), menuitem->action);
 }
 
 //----------------------------------------
 // dump a Menu and contained MenuItems to the console
 //----------------------------------------
 
-void dump_menu(const char *msg, struct Menu *menu)
+void menu_dump(const char *msg, struct Menu *menu)
 {
-  Serial.printf(F("----------------- Menu --------------------\n"));
+  Serial.printf(F("vvvvvvvvvvvvvvvvv Menu vvvvvvvvvvvvvvvvvvvv\n"));
   Serial.printf(F("%s\n"), msg);
-  Serial.printf(F("menu address=%08x\n"), menu);
-  Serial.printf(F("  title=%s\n"), menu->title);
-  Serial.printf(F("  num_items=%d\n"), menu->num_items);
-  Serial.printf(F("  items address=%08x\n"), menu->items);
+  Serial.printf(F("address=%08x, "), menu);
+  Serial.printf(F("title='%s', "), menu->title);
+  Serial.printf(F("num_items=%d, "), menu->num_items);
+  Serial.printf(F("items address=%08x\n"), menu->items);
+  Serial.printf(F("-------------------------------------------\n"));
   
   for (int i = 0; i < menu->num_items; ++i)
-    dump_menuitem(menu->items[i]);
+    menu_item_dump(menu->items[i]);
     
   Serial.printf(F("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"));
 }
@@ -329,7 +345,8 @@ void dump_menu(const char *msg, struct Menu *menu)
 
 bool hs_menuback_handler(HotSpot *hs)
 {
-  return false;
+  Serial.printf(F("hs_menuback_handler: hs.arg=%d\n"), hs->arg);
+  return true;
 }
 
 //----------------------------------------
@@ -339,6 +356,7 @@ bool hs_menuback_handler(HotSpot *hs)
 
 bool hs_menuitem_handler(HotSpot *hs)
 {
+  Serial.printf(F("hs_menuitem_handler: hs.arg=%d\n"), hs->arg);
   return false;
 }
 
@@ -348,20 +366,33 @@ bool hs_menuitem_handler(HotSpot *hs)
 // Only draws the top row.
 //----------------------------------------
 
+void menuBackButton(void)
+{
+  tft.fillRoundRect(MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT, BUTTON_RADIUS, MENUBACK_BG);
+  tft.fillRoundRect(MENUBACK_X+1, MENUBACK_Y+1, MENUBACK_WIDTH-2, MENUBACK_HEIGHT-2, BUTTON_RADIUS, MENUBACK_BG2);
+  tft.setFont(FONT_BUTTON);
+  tft.setTextColor(MENUBACK_FG);
+  tft.setCursor(MENUBACK_X + 8, MENUBACK_Y + 25);
+  tft.print("Back");
+}
+
 void menu_draw(struct Menu *menu)
 {
   // clear screen and write menu title on upper row
 
   tft.fillScreen(SCREEN_BG);
   tft.setTextWrap(false);
-  tft.setFont(FONT_MENU);
 
   // start drawing things that don't change
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
+  tft.setCursor(0, FREQ_OFFSET_Y);
   tft.setTextColor(MENU_FG);
-
+  tft.setFont(FONT_MENU);
+  tft.print(menu->title);
+  menuBackButton();
+  
   // draw menuitems
+  tft.setFont(FONT_MENUITEM);
   for (int i = 0; i < menu->num_items; ++ i)
   {
     int16_t x1;
@@ -377,8 +408,6 @@ void menu_draw(struct Menu *menu)
     tft.setCursor(ts_width - w, menuitem_y);
     tft.print(menu->items[i]->title);
   }
-
-  
 }
 
 //----------------------------------------
@@ -436,7 +465,7 @@ HotSpot hs_menu[] =
 // This code doesn't see events handled in any *_action() routine.
 //----------------------------------------
 
-void menu_show(struct Menu *menu)
+bool menu_show(struct Menu *menu)
 {
   Serial.printf(F("menu_show: called\n"));
   
@@ -445,33 +474,29 @@ void menu_show(struct Menu *menu)
 
   // get rid of any stray events to this point
   event_flush();
+  menu_dump("menu_show: menu", menu);
 
   while (true)
   {
-    // handle any pending event
-    if (event_pending() > 0)
-    {
-      // get next event and handle it
-      VFOEvent *event = event_pop();
-      Serial.printf(F("menu_show loop: event=%s\n"), event2display(event));
+    // get next event and handle it
+    VFOEvent *event = event_pop();
 
-      switch (event->event)
-      {
-        case event_Down:
-          Serial.printf(F("Event %s\n"), event2display(event));
-          if (hs_handletouch(event->x, event->y, hs_menu, MenuHSLen))
-          {
-            Serial.printf(F("hs_handletouch() returned 'true', refreshing display\n"));
-            draw_screen();
-            freq_show();
-            //event_flush();
-          }
-          break;
-        case event_None:
-          return;
-        default:
-          abort("Unrecognized event!?");
-      }
+    switch (event->event)
+    {
+      case event_Down:
+        Serial.printf("menu_show: loop: Event %s\n", event2display(event));
+        hs_dump("menu_show loop: hotspots", hs_menu, MenuHSLen);
+        if (hs_handletouch(event->x, event->y, hs_menu, MenuHSLen))
+        {
+          Serial.printf(F("menu_show loop: hs_handletouch() returned 'true', refresh display\n"));
+          event_flush();
+          return true;
+        }
+        break;
+      case event_None:
+        break;
+      default:
+        abort("Unrecognized event!?");
     }
   }
 }
@@ -554,7 +579,8 @@ struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
 struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
 struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
-struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
+struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
+struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2};
 struct Menu menu_main = {"Menu", ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
@@ -597,19 +623,19 @@ void undrawOnline(void)
 // Draw and undraw the Menu button.
 //-----------------------------------------------
 
-void drawMenu(void)
+void drawMenuButton(void)
 {
-  tft.fillRoundRect(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, BUTTON_RADIUS, MENU_BG2);
-  tft.fillRoundRect(MENU_X+1, MENU_Y+1, MENU_WIDTH-2, MENU_HEIGHT-2, BUTTON_RADIUS, MENU_BG);
-  tft.setCursor(MENU_X + 22, SCREEN_HEIGHT - 10);
+  tft.fillRoundRect(MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, BUTTON_RADIUS, MENUBTN_BG);
+  tft.fillRoundRect(MENUBTN_X+1, MENUBTN_Y+1, MENUBTN_WIDTH-2, MENUBTN_HEIGHT-2, BUTTON_RADIUS, MENUBTN_BG);
+  tft.setCursor(MENUBTN_X + 22, SCREEN_HEIGHT - 10);
   tft.setFont(FONT_BUTTON);
-  tft.setTextColor(MENU_FG);
+  tft.setTextColor(MENUBTN_FG);
   tft.print("Menu");
 }
 
-void undrawMenu(void)
+void undrawMenuButton(void)
 {
-  tft.fillRect(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, SCREEN_BG2);
+  tft.fillRect(MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, SCREEN_BG2);
 }
 
 //-----------------------------------------------
@@ -618,6 +644,7 @@ void undrawMenu(void)
 
 void draw_screen(void)
 {
+  Serial.printf(F("draw_screen: called\n"));
   tft.setFont(FONT_FREQ);
 
   // start drawing things that don't change
@@ -630,7 +657,7 @@ void draw_screen(void)
   tft.print("Hz");
 
   drawOnline();
-  drawMenu();
+  drawMenuButton();
 }
 
 //-----------------------------------------------
@@ -674,7 +701,7 @@ HotSpot hs_mainscreen[] =
   {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 6},
   {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 7},
   {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, online_hs_handler, 0},
-  {MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT, menu_hs_handler, 0},
+  {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, 0},
 };
 
 #define MainScreenHSLen   (sizeof(hs_mainscreen)/sizeof(hs_mainscreen[0]))
@@ -846,7 +873,7 @@ void keypad_show(int offset)
 
   // remove the online/menu buttons
   undrawOnline();
-  undrawMenu();
+  undrawMenuButton();
   
   // draw keypad basic outline
   tft.fillRoundRect(KEYPAD_X, KEYPAD_Y, KEYPAD_W, KEYPAD_H, BUTTON_RADIUS, ILI9341_BLACK);
@@ -947,15 +974,16 @@ void loop()
     switch (event->event)
     {
       case event_Down:
-        Serial.printf("Event %s\n", event2display(event));
+        Serial.printf("loop: Event %s\n", event2display(event));
         hs_dump("main loop:", hs_mainscreen, MainScreenHSLen);
         if (hs_handletouch(event->x, event->y, hs_mainscreen, MainScreenHSLen))
         {
-          Serial.printf("hs_handletouch() returned 'true', refreshing display\n");
+          Serial.printf("loop: hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
           freq_show();
-          //event_flush();
+          Serial.printf("loop: finished refreshing display\n");
         }
+        Serial.printf(F("loop: After event_Down in loop()\n"));
         break;
       case event_None:
         return;

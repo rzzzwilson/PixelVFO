@@ -59,14 +59,15 @@ bool hs_handletouch(int touch_x, int touch_y,
 {
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
-    if ((touch_x < hs->x) || (touch_x > hs->x + hs->w) ||
-        (touch_y < hs->y) || (touch_y > hs->y + hs->h))
+    if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
+        (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      continue;
+      Serial.printf(F(">>>>> hs_handletouch: calling hs->handler=%p\n"), hs->handler);
+      bool result =  (hs->handler)(hs);
+      Serial.printf(F("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n"),
+                    hs->handler, result ? "true" : "false");
+      return result;
     }
-
-    Serial.printf(F("hs_handletouch: calling hs->handler=%p\n"), hs->handler);
-    return (hs->handler)(hs);
   }
 
   return false;
