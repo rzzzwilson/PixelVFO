@@ -7,12 +7,10 @@
 #include <SPI.h>
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
-#include <Fonts/FreeSansBold12pt7b.h>
-#include <Fonts/FreeSansBold18pt7b.h>
-#include <Fonts/FreeSansBold24pt7b.h>
 #include "PixelVFO.h"
 #include "events.h"
 #include "hotspot.h"
+#include "menu.h"
 
 #define MAJOR_VERSION   "0"
 #define MINOR_VERSION   "1"
@@ -56,16 +54,12 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 // constants for main screen layout
 #define NUM_F_CHAR            8     // number digits in frequency display
 #define CHAR_WIDTH            27    // width of each frequency digit
-#define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
 #define FREQ_OFFSET_Y         40    // offset from top of frequency digits
 #define FREQ_OFFSET_X         40    // offset from left of frequency digits
 #define MHZ_OFFSET_X          257   // offset from left of the 'Hz' units
 
 // display constants - offsets, colours, etc
 #define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
-#define FONT_BUTTON         (&FreeSansBold12pt7b) // font for button labels
-#define FONT_MENU           (&FreeSansBold18pt7b) // font for menuitems
-#define FONT_MENUITEM       (&FreeSansBold12pt7b) // font for menuitems
 
 // various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
@@ -80,9 +74,15 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define FREQ_SEL_BG         ILI9341_GREEN
 #define BOTTOM_BG           ILI9341_WHITE
 
-// ONLINE button definitions
-#define BUTTON_RADIUS       5
+// MENU button definitions
+#define MENUBTN_WIDTH          110
+#define MENUBTN_HEIGHT         35
+#define MENUBTN_X              (ts_width - MENUBTN_WIDTH)
+#define MENUBTN_Y              (ts_height - MENUBTN_HEIGHT)
+#define MENUBTN_BG             ILI9341_GREEN
+#define MENUBTN_FG             ILI9341_BLUE
 
+// ONLINE button definitions
 #define ONLINE_WIDTH        110
 #define ONLINE_HEIGHT       35
 #define ONLINE_X            0
@@ -93,29 +93,6 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define STANDBY_BG2         0x4000
 #define ONLINE_FG           ILI9341_GREEN
 #define STANDBY_FG           ILI9341_BLACK
-
-// MENU button definitions
-#define MENUBTN_WIDTH          110
-#define MENUBTN_HEIGHT         35
-#define MENUBTN_X              (ts_width - MENUBTN_WIDTH)
-#define MENUBTN_Y              (ts_height - MENUBTN_HEIGHT)
-#define MENUBTN_BG             ILI9341_GREEN
-#define MENUBTN_FG             ILI9341_BLUE
-
-// constants for the menu system
-#define MENU_FG             ILI9341_BLACK
-#define MENU_BG             ILI9341_GREEN
-#define MENUITEM_HEIGHT     35
-#define MAXMENUITEMROWS     5
-
-
-#define MENUBACK_WIDTH      80
-#define MENUBACK_HEIGHT     35
-#define MENUBACK_FG         ILI9341_BLACK
-#define MENUBACK_BG         ILI9341_BLACK
-#define MENUBACK_BG2        ILI9341_GREEN
-#define MENUBACK_X          (ts_width - MENUBACK_WIDTH - 1)
-#define MENUBACK_Y          ((DEPTH_FREQ_DISPLAY - MENUBACK_HEIGHT)/2)
 
 
 // macro to get number of elements in an array
@@ -280,225 +257,6 @@ void draw_thousands(void)
 {
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*2, 44, 2, 6, FREQ_FG);
   tft.fillRect(FREQ_OFFSET_X+CHAR_WIDTH*5, 44, 2, 6, FREQ_FG);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-// Code to handle the PixelVFO menus
-//////////////////////////////////////////////////////////////////////////////
-
-// handler for selection of an item
-typedef void (*ItemAction)(struct Menu *, int);
-
-// structure defining a menu item
-struct MenuItem
-{
-  const char *title;          // menu item display text
-  struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
-  ItemAction action;          // if not NULL, address of action function
-};
-
-// A structure defining a menu
-struct Menu
-{
-  const char *title;          // title displayed on menu page
-  int num_items;              // number of items in the array below
-  struct MenuItem **items;    // array of pointers to MenuItem data
-};
-
-//----------------------------------------
-// dump a MenuItem to the console
-// only called from menu_dump()
-//----------------------------------------
-
-void menu_item_dump(struct MenuItem *menuitem)
-{
-  Serial.printf(F("  menuitem address=%08x, "), menuitem);
-  Serial.printf(F("title='%s', "), menuitem->title);
-  Serial.printf(F("menu=%08x, "), menuitem->menu);
-  Serial.printf(F("action=%08x\n"), menuitem->action);
-}
-
-//----------------------------------------
-// dump a Menu and contained MenuItems to the console
-//----------------------------------------
-
-void menu_dump(const char *msg, struct Menu *menu)
-{
-  Serial.printf(F("vvvvvvvvvvvvvvvvv Menu vvvvvvvvvvvvvvvvvvvv\n"));
-  Serial.printf(F("%s\n"), msg);
-  Serial.printf(F("address=%08x, "), menu);
-  Serial.printf(F("title='%s', "), menu->title);
-  Serial.printf(F("num_items=%d, "), menu->num_items);
-  Serial.printf(F("items address=%08x\n"), menu->items);
-  Serial.printf(F("-------------------------------------------\n"));
-  
-  for (int i = 0; i < menu->num_items; ++i)
-    menu_item_dump(menu->items[i]);
-    
-  Serial.printf(F("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"));
-}
-
-//----------------------------------------
-// Handle the menu 'BACK' hotspot.
-//     pointer to the hotspot we are actioning
-//----------------------------------------
-
-bool hs_menuback_handler(HotSpot *hs)
-{
-  Serial.printf(F("hs_menuback_handler: hs.arg=%d\n"), hs->arg);
-  return true;
-}
-
-//----------------------------------------
-// Handle the menu 'select menuitem' hotspot
-//     pointer to the hotspot we are actioning
-//----------------------------------------
-
-bool hs_menuitem_handler(HotSpot *hs)
-{
-  Serial.printf(F("hs_menuitem_handler: hs.arg=%d\n"), hs->arg);
-  return false;
-}
-
-//----------------------------------------
-// Draw a menu on the screen.
-//     menu  pointer to a Menu structure
-// Only draws the top row.
-//----------------------------------------
-
-void menuBackButton(void)
-{
-  tft.fillRoundRect(MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT, BUTTON_RADIUS, MENUBACK_BG);
-  tft.fillRoundRect(MENUBACK_X+1, MENUBACK_Y+1, MENUBACK_WIDTH-2, MENUBACK_HEIGHT-2, BUTTON_RADIUS, MENUBACK_BG2);
-  tft.setFont(FONT_BUTTON);
-  tft.setTextColor(MENUBACK_FG);
-  tft.setCursor(MENUBACK_X + 8, MENUBACK_Y + 25);
-  tft.print("Back");
-}
-
-void menu_draw(struct Menu *menu)
-{
-  // clear screen and write menu title on upper row
-
-  tft.fillScreen(SCREEN_BG);
-  tft.setTextWrap(false);
-
-  // start drawing things that don't change
-  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.setCursor(0, FREQ_OFFSET_Y);
-  tft.setTextColor(MENU_FG);
-  tft.setFont(FONT_MENU);
-  tft.print(menu->title);
-  menuBackButton();
-  
-  // draw menuitems
-  tft.setFont(FONT_MENUITEM);
-  for (int i = 0; i < menu->num_items; ++ i)
-  {
-    int16_t x1;
-    int16_t y1;
-    uint16_t w;
-    uint16_t h;
-    int menuitem_y = DEPTH_FREQ_DISPLAY + i*MENUITEM_HEIGHT + MENUITEM_HEIGHT;
-    
-    tft.getTextBounds((char *) menu->items[i]->title, 0, 0, &x1, &y1, &w, &h);
-
-    // write indexed item on lower row, right-justified
-    tft.fillRect(0, menuitem_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
-    tft.setCursor(ts_width - w, menuitem_y);
-    tft.print(menu->items[i]->title);
-  }
-}
-
-//----------------------------------------
-// Draw a standard menuitem on the screen.
-//     menu      pointer to a Menu structure
-//     item_num  the item number to show
-//     row       menu row to draw menuitem on
-// Custome menuitems are drawn by their handler.
-//----------------------------------------
-
-void menuitem_draw(struct Menu *menu, int item_num, int row)
-{
-  // figure out max length of item strings
-  int max_len = 0;
-  int row_offset = MENUITEM_HEIGHT*row;
-
-  for (int i = 0; i < menu->num_items; ++ i)
-  {
-    int16_t x1;
-    int16_t y1;
-    uint16_t w;
-    uint16_t h;
-    
-    tft.getTextBounds((char *) menu->items[i]->title, 30, 30, &x1, &y1, &w, &h);
-
-    if (w > max_len)
-        max_len = w;
-  }
-
-  // write indexed item on lower row, right-justified
-  tft.fillRect(0, 2, ts_width, DEPTH_FREQ_DISPLAY+row_offset, SCREEN_BG);
-  
-  tft.setCursor(max_len, DEPTH_FREQ_DISPLAY+row_offset);
-  tft.print(menu->items[item_num]->title);
-}
-
-// menu HotSpot definitions
-HotSpot hs_menu[] =
-{
-  {0, 0, ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 1},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
-};
-
-#define MenuHSLen   (sizeof(hs_menu)/sizeof(hs_menu[0]))
-
-//----------------------------------------
-// Handle a menu.
-//     menu  pointer to a defining Menu structure
-//
-// Handle events in the loop here.
-// This code doesn't see events handled in any *_action() routine.
-//----------------------------------------
-
-bool menu_show(struct Menu *menu)
-{
-  Serial.printf(F("menu_show: called\n"));
-  
-  // draw the menu page
-  menu_draw(menu);
-
-  // get rid of any stray events to this point
-  event_flush();
-  menu_dump("menu_show: menu", menu);
-
-  while (true)
-  {
-    // get next event and handle it
-    VFOEvent *event = event_pop();
-
-    switch (event->event)
-    {
-      case event_Down:
-        Serial.printf("menu_show: loop: Event %s\n", event2display(event));
-        hs_dump("menu_show loop: hotspots", hs_menu, MenuHSLen);
-        if (hs_handletouch(event->x, event->y, hs_menu, MenuHSLen))
-        {
-          Serial.printf(F("menu_show loop: hs_handletouch() returned 'true', refresh display\n"));
-          event_flush();
-          return true;
-        }
-        break;
-      case event_None:
-        break;
-      default:
-        abort("Unrecognized event!?");
-    }
-  }
 }
 
 //----------------------------------------
