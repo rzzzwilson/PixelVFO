@@ -36,6 +36,5 @@ struct Menu
 // menu functions
 void menu_dump(const char *msg, struct Menu *menu);
 bool menu_show(struct Menu *menu);
-void menu_draw(struct Menu *menu);
 
 #endif
