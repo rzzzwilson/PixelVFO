@@ -9,6 +9,23 @@
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 
+// constants for main screen layout
+#define NUM_F_CHAR            8     // number digits in frequency display
+#define CHAR_WIDTH            27    // width of each frequency digit
+#define FREQ_OFFSET_Y         40    // offset from top of frequency digits
+#define FREQ_OFFSET_X         40    // offset from left of frequency digits
+#define MHZ_OFFSET_X          257   // offset from left of the 'Hz' units
+
+#define SCREEN_BG           ILI9341_BLACK
+#define SCREEN_BG3          ILI9341_LIGHTGREY
+#define SCREEN_BG2          ILI9341_DARKGREY
+#define SCREEN_BG1          ILI9341_BLACK
+#define FREQ_FG             ILI9341_BLUE
+#define FREQ_BG             ILI9341_WHITE
+#define FREQ_SEL_BG         ILI9341_GREEN
+#define BOTTOM_BG           ILI9341_WHITE
+
+
 #define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
 #define BUTTON_RADIUS         5
 #define FONT_BUTTON           (&FreeSansBold12pt7b) // font for button labels

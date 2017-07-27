@@ -51,28 +51,12 @@ XPT2046_Touchscreen ts(TS_CS);
 #define TFT_CS      10
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);  
 
-// constants for main screen layout
-#define NUM_F_CHAR            8     // number digits in frequency display
-#define CHAR_WIDTH            27    // width of each frequency digit
-#define FREQ_OFFSET_Y         40    // offset from top of frequency digits
-#define FREQ_OFFSET_X         40    // offset from left of frequency digits
-#define MHZ_OFFSET_X          257   // offset from left of the 'Hz' units
-
 // display constants - offsets, colours, etc
 #define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
 
 // various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 #define ILI9341_DARKGREY    0x7BEF      /* 128, 128, 128 */
-
-#define SCREEN_BG           ILI9341_BLACK
-#define SCREEN_BG3          ILI9341_LIGHTGREY
-#define SCREEN_BG2          ILI9341_DARKGREY
-#define SCREEN_BG1          ILI9341_BLACK
-#define FREQ_FG             ILI9341_BLUE
-#define FREQ_BG             ILI9341_WHITE
-#define FREQ_SEL_BG         ILI9341_GREEN
-#define BOTTOM_BG           ILI9341_WHITE
 
 // MENU button definitions
 #define MENUBTN_WIDTH          110
