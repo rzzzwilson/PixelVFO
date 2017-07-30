@@ -14,7 +14,7 @@
 
 
 // handler for selection of an item
-typedef void (*ItemAction)(struct Menu *, int);
+typedef void (*ItemAction)(void);
 
 // structure defining a menu item
 struct MenuItem
@@ -36,5 +36,6 @@ struct Menu
 // menu functions
 void menu_dump(const char *msg, struct Menu *menu);
 bool menu_show(struct Menu *menu);
+const char *mi_display(struct MenuItem *mi);
 
 #endif

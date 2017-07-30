@@ -13,7 +13,7 @@
 #include "menu.h"
 
 #define MAJOR_VERSION   "0"
-#define MINOR_VERSION   "1"
+#define MINOR_VERSION   "2"
 
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
@@ -78,9 +78,6 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define ONLINE_FG           ILI9341_GREEN
 #define STANDBY_FG           ILI9341_BLACK
 
-
-// macro to get number of elements in an array
-#define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
 
 // the VFO states
 enum VFOState
@@ -257,44 +254,85 @@ void display_flash(void)
 // Menuitem action handlers
 //-----------------------------------------------
 
-void reset_no_action(struct Menu *menu, int item_num)
+void reset_no_action(void)
 {
   Serial.printf(F("reset_no_action: called\n"));
 }
 
-void reset_action(struct Menu *menu, int item_num)
+void reset_action(void)
 {
   Serial.printf(F("reset_action: called\n"));
 }
 
-void brightness_action(struct Menu *menu, int item_num)
+void brightness_action(void)
 {
   Serial.printf(F("brightness_action: called\n"));
 }
 
-void calibrate_action(struct Menu *menu, int item_num)
+void calibrate_action(void)
 {
   Serial.printf(F("calibrate_action: called\n"));
 }
 
-void saveslot_action(struct Menu *menu, int item_num)
+void saveslot_action(void)
 {
   Serial.printf(F("saveslot_action: called\n"));
 }
 
-void restoreslot_action(struct Menu *menu, int item_num)
-{
-  Serial.printf(F("credits_action: called\n"));
-}
-
-void deleteslot_action(struct Menu *menu, int item_num)
+void restoreslot_action(void)
 {
   Serial.printf(F("restoreslot_action: called\n"));
 }
 
-void credits_action(struct Menu *menu, int item_num)
+void deleteslot_action(void)
+{
+  Serial.printf(F("deleteslot_action: called\n"));
+}
+
+bool hs_creditsback_handler(HotSpot *hs, void *ignore)
+{
+  return true;
+}
+
+static HotSpot hs_credits[] =
+{
+  {0, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_creditsback_handler, 0},
+};
+
+#define CreditsHSLen   ALEN(hs_credits)
+
+void credits_action(void)
 {
   Serial.printf(F("credits_action: called\n"));
+  tft.setFont(FONT_FREQ);
+
+  // start drawing things that don't change
+  tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
+  tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
+  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.setCursor(0, 0);
+  tft.setTextColor(FREQ_FG);
+  tft.print("Credits");
+
+  // handle all events in the queue
+  event_flush();
+  while (true)
+  {
+    // get next event and handle it
+    VFOEvent *event = event_pop();
+
+    switch (event->event)
+    {
+      case event_Down:
+        if (hs_handletouch(event->x, event->y, hs_credits, CreditsHSLen))
+        {
+          Serial.printf("credits_action: hs_handletouch() returned 'true', exiting\n");
+          return;
+        }
+      default:
+        break;
+    }
+  }
 }
 
 //-----------------------------------------------
@@ -321,8 +359,7 @@ struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
 struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
 struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
-struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
-struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2};
+struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
 struct Menu menu_main = {"Menu", ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
@@ -446,20 +483,20 @@ HotSpot hs_mainscreen[] =
   {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, 0},
 };
 
-#define MainScreenHSLen   (sizeof(hs_mainscreen)/sizeof(hs_mainscreen[0]))
+#define MainScreenHSLen   ALEN(hs_mainscreen)
 
 //-----------------------------------------------
 // Screen hotspot handlers.
 //-----------------------------------------------
 
-bool freq_hs_handler(HotSpot *hs_ptr)
+bool freq_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   freq_digit_select = hs_ptr->arg;
   keypad_show(hs_ptr->arg);
   return true;
 }
 
-bool online_hs_handler(HotSpot *hs_ptr)
+bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   // toggle state and redraw the button
   if (vfo_state == VFO_Standby)
@@ -478,7 +515,7 @@ bool online_hs_handler(HotSpot *hs_ptr)
   return false;
 }
 
-bool menu_hs_handler(HotSpot *hs_ptr)
+bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   Serial.printf("menu_hs_handler: would display menu\n");
   menu_show(&menu_main);
@@ -509,7 +546,7 @@ char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 // Update the frequency display.
 //-----------------------------------------------
 
-bool keypad_handler(HotSpot *hs)
+bool keypad_handler(HotSpot *hs, void *ignore)
 {
   int arg = hs->arg;
 
@@ -522,19 +559,19 @@ bool keypad_handler(HotSpot *hs)
   return false;
 }
 
-bool keypad_not_used(HotSpot *hs)
+bool keypad_not_used(HotSpot *hs, void *ignore)
 {
   Serial.printf("keypad_not_used: called, arg=%d\n", hs->arg);
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
   return false;
 }
 
-bool keypad_close_handler(HotSpot *hs)
+bool keypad_close_handler(HotSpot *hs, void *ignore)
 {
   return true;
 }
 
-bool keypad_freq_handler(HotSpot *hs)
+bool keypad_freq_handler(HotSpot *hs, void *ignore)
 {
   Serial.printf("keypad_freq_handler: called, arg=%d\n", hs->arg);
 
@@ -569,7 +606,7 @@ HotSpot hs_keypad[] =
   {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 7},
 };  
 
-#define KeypadHSLen   (sizeof(hs_keypad)/sizeof(hs_keypad[0]))
+#define KeypadHSLen   ALEN(hs_keypad)
 
 //-----------------------------------------------
 // Draw a keypad button.

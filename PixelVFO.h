@@ -9,6 +9,9 @@
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 
+// macro to get number of elements in an array
+#define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
+
 // constants for main screen layout
 #define NUM_F_CHAR            8     // number digits in frequency display
 #define CHAR_WIDTH            27    // width of each frequency digit
