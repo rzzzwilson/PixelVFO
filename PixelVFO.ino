@@ -19,7 +19,7 @@
 #define SCREEN_HEIGHT   240
 
 // This is calibration data for the raw touch data to the screen coordinates
-#if 1
+#if 0
 // 2.8" calibration
 #define TS_MINX     200
 #define TS_MINY     340
@@ -27,7 +27,7 @@
 #define TS_MAXY     3895
 #endif
 
-#if 0
+#if 1
 // 2.2" calibration
 #define TS_MINX     170
 #define TS_MINY     180
@@ -103,6 +103,43 @@ uint32_t msraw = 0x80000000;
 
 VFOState vfo_state = VFO_Standby;
 
+
+//-----------------------------------------------
+// Helper for the dumphex() function.
+//     base  (void *) pointer to a byte in memory
+//     num   number of bytes to dump
+//-----------------------------------------------
+
+void dumphex_helper(char *base, int num)
+{
+  for (int i = 0; i < 16; ++i)
+  {
+    Serial.printf(F("%02x "), *(base + i));
+  }
+  Serial.printf(F("\n"));
+}
+
+//-----------------------------------------------
+// Print a hex dump of a portion of memory.
+//     msg   informative message label for dump
+//     base  (void *) pointer to a byte in memory
+//     size  number of bytes to dump
+//-----------------------------------------------
+
+void dumphex(const char *msg, void *base, int num)
+{
+  char *off = (char *) base;
+
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
+  Serial.printf(F("HexDump: %s\n"), msg);
+  while (num > 0)
+  {
+    dumphex_helper(off, 16);
+    num -= 16;
+    off += 16;
+  }
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
+}
 
 //-----------------------------------------------
 // Abort the application giving as much information about the
@@ -310,7 +347,7 @@ void credits_action(void)
   tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.setCursor(0, 0);
+  tft.setCursor(5, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Credits");
 
@@ -342,7 +379,7 @@ void credits_action(void)
 struct MenuItem mi_reset_no = {"No", NULL, &reset_no_action};
 struct MenuItem mi_reset_yes = {"Yes", NULL, &reset_action};
 struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
-struct Menu reset_menu = {"Reset all", ALEN(mia_reset), mia_reset};
+struct Menu reset_menu = {"Reset all", ALEN(mia_reset), mia_reset};          
 
 struct MenuItem mi_brightness = {"Brightness", NULL, &brightness_action};
 struct MenuItem mi_calibrate = {"Calibrate", NULL, &calibrate_action};
@@ -517,7 +554,7 @@ bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 
 bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
-  Serial.printf("menu_hs_handler: would display menu\n");
+  menu_dump("menu_hs_handler: menu", &menu_main);
   menu_show(&menu_main);
   return true;
 }
@@ -699,6 +736,15 @@ void setup(void)
 {
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
+  menu_dump("setup: menu_main", &menu_main);
+//  struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
+  for (int i = 0; i < 4; ++i)
+  {
+    struct MenuItem *m = mia_main[i];
+    Serial.printf(F("MI: %d, mi=%p (%s)\n"), i, m, mi_display(m));
+  }
+
+  dumphex("menu_main", (void *) &menu_main, 64);
   
   // link the TS_IRQ pin to its interrupt handler
   attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);

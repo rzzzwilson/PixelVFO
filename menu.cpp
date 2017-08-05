@@ -37,18 +37,11 @@ extern int ts_width;
 // Debug function.
 //----------------------------------------
 
-//struct MenuItem
-//{
-//  const char *title;          // menu item display text
-//  struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
-//  ItemAction action;          // if not NULL, address of action function
-//};
-
 const char *mi_display(struct MenuItem *mi)
 {
   static char buffer[128];
 
-  sprintf(buffer, "mi: title=%s, menu=%p, action=%p", mi->title, mi->menu, mi->action);
+  sprintf(buffer, "mi: %p, title=%s, menu=%p, action=%p", mi, mi->title, mi->menu, mi->action);
   
   return buffer;
 }
@@ -65,12 +58,11 @@ void menu_dump(char const *msg, Menu *menu)
 {
   Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
   Serial.printf(F("Menu: %s\n"), msg);
-  Serial.printf(F("  title=%s\n"), menu->title);
-  //struct Menuitem *mi_ptr = menu->items;
-  struct MenuItem *mi_ptr = *menu->items;
+  Serial.printf(F("  title=%s, num items=%d\n"), menu->title, menu->num_items);
 
-  for (int i = 0; i < menu->num_items; ++i, ++mi_ptr)
+  for (int i = 0; i < menu->num_items; ++i)
   {
+    struct MenuItem *mi_ptr = menu->items[i];
     Serial.printf(F("    mi %d: %s\n"), i, mi_display(mi_ptr));
   }
   Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
@@ -193,15 +185,12 @@ static HotSpot hs_menu[] =
 bool menu_handletouch(int touch_x, int touch_y,
                       HotSpot *hs, int hs_len, struct Menu *menu)
 {
-  struct MenuItem *mi = *menu->items;
-
   Serial.printf(F("menu_handletouch: entered\n"));
   
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
-    Serial.printf(F("menu_handletouch: MenuItem %d:\n\t%s\n"), i, mi_display(mi));
-    Serial.printf(F("touch_x=%d, touch_y=%d, "), touch_x, touch_y);
-    Serial.printf(F("hs->x=%d, hs->y=%d, hs->w=%d, hs->h=%d\n"), hs->x, hs->y, hs->w, hs->w);
+    Serial.printf(F("menu_handletouch: i=%d, touch_x=%d, touch_y=%d, "), i, touch_x, touch_y);
+    Serial.printf(F("hs->x=%d, hs->y=%d, hs->w=%d, hs->h=%d\n"), hs->x, hs->y, hs->w, hs->h);
 
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
@@ -211,9 +200,12 @@ bool menu_handletouch(int touch_x, int touch_y,
         if (i == 0)
         {
           // the "Back" button was pressed
+          Serial.printf(F("menu_handletouch: BACK, returning"));
           return true;
         }
-        mi += (i - 1);
+        
+        struct MenuItem *mi = menu->items[i];
+
         if (mi->menu)
         {
           Serial.printf(F("menu_handletouch: new menu: %s\n"), mi_display(mi));
