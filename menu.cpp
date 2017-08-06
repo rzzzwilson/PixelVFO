@@ -73,7 +73,7 @@ void menu_dump(char const *msg, Menu *menu)
 // Draw the Menu "Back" button.
 //----------------------------------------
   
-static void menuBackButton(void)
+void menuBackButton(void)
 { 
   tft.fillRoundRect(MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT, BUTTON_RADIUS, MENUBACK_BG);
   tft.fillRoundRect(MENUBACK_X+1, MENUBACK_Y+1, MENUBACK_WIDTH-2, MENUBACK_HEIGHT-2, BUTTON_RADIUS, MENUBACK_BG2);
@@ -158,7 +158,7 @@ bool hs_menuitem_handler(HotSpot *hs, void *mi)
 static HotSpot hs_menu[] =
 {
   {0, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT,    NULL,                0},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 0},
   {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 1},
   {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 2},
   {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 3},
@@ -195,7 +195,7 @@ bool menu_handletouch(int touch_x, int touch_y,
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      if (i < menu->num_items)
+      if (i <= menu->num_items)
       {
         if (i == 0)
         {
@@ -204,7 +204,7 @@ bool menu_handletouch(int touch_x, int touch_y,
           return true;
         }
         
-        struct MenuItem *mi = menu->items[i];
+        struct MenuItem *mi = menu->items[i-1];
 
         if (mi->menu)
         {
@@ -225,7 +225,7 @@ bool menu_handletouch(int touch_x, int touch_y,
       else
       {
         // off active MenuItems, just return
-        Serial.printf(F("menu_handletouch: returning 'false'\n"));
+        Serial.printf(F("menu_handletouch: no touch, returning 'false'\n"));
         return false;
       }
     }
@@ -267,8 +267,8 @@ bool menu_show(struct Menu *menu)
           event_flush();
           return false;
         }
-        Serial.printf(F("menu_show loop: redrawing menu\n"));
-        menu_draw(menu);    // redraw the menu page
+//        Serial.printf(F("menu_show loop: redrawing menu\n"));
+//        menu_draw(menu);    // redraw the menu page
         break;
       case event_None:
         break;

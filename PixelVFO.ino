@@ -14,12 +14,13 @@
 
 #define MAJOR_VERSION   "0"
 #define MINOR_VERSION   "2"
+#define CALLSIGN        "vk4fawr"
 
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
 
 // This is calibration data for the raw touch data to the screen coordinates
-#if 0
+#if 1
 // 2.8" calibration
 #define TS_MINX     200
 #define TS_MINY     340
@@ -27,7 +28,7 @@
 #define TS_MAXY     3895
 #endif
 
-#if 1
+#if 0
 // 2.2" calibration
 #define TS_MINX     170
 #define TS_MINY     180
@@ -53,6 +54,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 
 // display constants - offsets, colours, etc
 #define FONT_FREQ           (&FreeSansBold24pt7b) // font for frequency display
+#define FONT_CREDIT         (&FreeSansBold24pt7b) // first line of credit
+#define FONT_CREDIT2        (&FreeSansBold18pt7b) // second line of credit
 
 // various colours
 #define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
@@ -65,6 +68,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define MENUBTN_Y              (ts_height - MENUBTN_HEIGHT)
 #define MENUBTN_BG             ILI9341_GREEN
 #define MENUBTN_FG             ILI9341_BLUE
+
+#define CREDIT_FG              ILI9341_BLUE
 
 // ONLINE button definitions
 #define ONLINE_WIDTH        110
@@ -341,15 +346,26 @@ static HotSpot hs_credits[] =
 void credits_action(void)
 {
   Serial.printf(F("credits_action: called\n"));
-  tft.setFont(FONT_FREQ);
 
   // start drawing things that don't change
   tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
+  tft.fillRect(0, 0, tft.width(), tft.height(), FREQ_SEL_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
-  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
   tft.setCursor(5, FREQ_OFFSET_Y);
   tft.setTextColor(FREQ_FG);
+  tft.setFont(FONT_MENU);
   tft.print("Credits");
+  menuBackButton();
+
+  // draw actual credit stuff
+  tft.setFont(FONT_CREDIT);
+  tft.setTextColor(CREDIT_FG);
+  tft.setCursor(15, 150);
+  tft.printf("PixelVFO %s.%s", MAJOR_VERSION, MINOR_VERSION);
+  tft.setFont(FONT_CREDIT2);
+  tft.setCursor(180, 230);
+  tft.printf("%s", CALLSIGN);
+  
 
   // handle all events in the queue
   event_flush();
