@@ -90,6 +90,8 @@ void menuBackButton(void)
   
 static void menu_draw(struct Menu *menu)
 {
+  Serial.printf(F("menu_draw: drawing menu %p\n"), menu);
+  
   // clear screen and write menu title on upper row
   tft.fillScreen(SCREEN_BG);
   tft.setTextWrap(false);
@@ -200,7 +202,7 @@ bool menu_handletouch(int touch_x, int touch_y,
         if (i == 0)
         {
           // the "Back" button was pressed
-          Serial.printf(F("menu_handletouch: BACK, returning"));
+          Serial.printf(F("menu_handletouch: BACK, returning true\n"));
           return true;
         }
         
@@ -210,12 +212,14 @@ bool menu_handletouch(int touch_x, int touch_y,
         {
           Serial.printf(F("menu_handletouch: new menu: %s\n"), mi_display(mi));
           menu_show(mi->menu);
-          return true;
+          Serial.printf(F("menu_handletouch: menu, returning false\n"));
+          return false;
         }
         else if (mi->action)
         {
           Serial.printf(F("menu_handletouch: action: %s\n"), mi_display(mi));
           mi->action();
+          Serial.printf(F("menu_handletouch: action, returning false\n"));
           return false;
         }
         else
@@ -225,12 +229,12 @@ bool menu_handletouch(int touch_x, int touch_y,
       else
       {
         // off active MenuItems, just return
-        Serial.printf(F("menu_handletouch: no touch, returning 'false'\n"));
+        Serial.printf(F("menu_handletouch: no hotspot touch, returning 'false'\n"));
         return false;
       }
     }
   }
-  Serial.printf(F("menu_handletouch: returning 'false'\n"));
+  Serial.printf(F("menu_handletouch: end of items, returning 'false'\n"));
   return false;
 }
 
@@ -267,8 +271,8 @@ bool menu_show(struct Menu *menu)
           event_flush();
           return false;
         }
-//        Serial.printf(F("menu_show loop: redrawing menu\n"));
-//        menu_draw(menu);    // redraw the menu page
+        Serial.printf(F("menu_show loop: redrawing menu %p\n"), menu);
+        menu_draw(menu);    // redraw the menu page
         break;
       case event_None:
         break;
