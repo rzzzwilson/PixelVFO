@@ -19,7 +19,7 @@
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
 
-// This is calibration data for the raw touch data to the screen coordinates
+// calibration data for raw touch data to screen coordinates transformation
 #if 1
 // 2.8" calibration
 #define TS_MINX     200
@@ -67,6 +67,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define MENUBTN_X              (ts_width - MENUBTN_WIDTH)
 #define MENUBTN_Y              (ts_height - MENUBTN_HEIGHT)
 #define MENUBTN_BG             ILI9341_GREEN
+#define MENUBTN_BG2            0x4000
 #define MENUBTN_FG             ILI9341_BLUE
 
 #define CREDIT_FG              ILI9341_BLUE
@@ -457,7 +458,7 @@ void undrawOnline(void)
 
 void drawMenuButton(void)
 {
-  tft.fillRoundRect(MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, BUTTON_RADIUS, MENUBTN_BG);
+  tft.fillRoundRect(MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, BUTTON_RADIUS, MENUBTN_BG2);
   tft.fillRoundRect(MENUBTN_X+1, MENUBTN_Y+1, MENUBTN_WIDTH-2, MENUBTN_HEIGHT-2, BUTTON_RADIUS, MENUBTN_BG);
   tft.setCursor(MENUBTN_X + 22, SCREEN_HEIGHT - 10);
   tft.setFont(FONT_BUTTON);
