@@ -82,7 +82,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define STANDBY_BG          ILI9341_GREEN
 #define STANDBY_BG2         0x4000
 #define ONLINE_FG           ILI9341_GREEN
-#define STANDBY_FG           ILI9341_BLACK
+#define STANDBY_FG          ILI9341_BLACK
 
 
 // the VFO states
@@ -525,6 +525,7 @@ bool ts_read(int *x, int *y)
 // main screen HotSpot definitions
 HotSpot hs_mainscreen[] =
 {
+  // digits in the frequency display
   {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 0},
   {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 1},
   {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 2},
@@ -533,11 +534,11 @@ HotSpot hs_mainscreen[] =
   {FREQ_OFFSET_X + 5*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 5},
   {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 6},
   {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 7},
+  // the "ONLINE/Standby" button
   {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, online_hs_handler, 0},
+  // the "Menu" button
   {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, 0},
 };
-
-#define MainScreenHSLen   ALEN(hs_mainscreen)
 
 //-----------------------------------------------
 // Screen hotspot handlers.
@@ -549,6 +550,13 @@ bool freq_hs_handler(HotSpot *hs_ptr, void *ignore)
   keypad_show(hs_ptr->arg);
   return true;
 }
+
+//-----------------------------------------------
+// Handle pressing the 'ONLINE/Standby' button.
+//     hs_ptr  a pointer to the actioned HotSpot item
+//     ignore  ignored
+// Returns 'false' as no screen redraw required.
+//-----------------------------------------------
 
 bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
@@ -564,10 +572,17 @@ bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
     // TODO: turn off DDS
   }
     
-  drawOnline();
+  drawOnline();   // redraws button with appropriate text
 
   return false;
 }
+
+//-----------------------------------------------
+// Action routine called when the "Menu" button is pressed.
+//     hs_ptr  a pointer to the HotSpot item actioned
+//     ignore  not used
+// Returns 'true' as we will need to redraw the screen.
+//-----------------------------------------------
 
 bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
@@ -817,8 +832,8 @@ void loop()
     {
       case event_Down:
         Serial.printf("loop: Event %s\n", event2display(event));
-        hs_dump("main loop:", hs_mainscreen, MainScreenHSLen);
-        if (hs_handletouch(event->x, event->y, hs_mainscreen, MainScreenHSLen))
+        hs_dump("main loop:", hs_mainscreen, ALEN(hs_mainscreen));
+        if (hs_handletouch(event->x, event->y, hs_mainscreen, ALEN(hs_mainscreen)))
         {
           Serial.printf("loop: hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();

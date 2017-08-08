@@ -51,7 +51,8 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 //     touch_y  Y coord of screen touch
 //     hs       base address of array of HotSpots
 //     hs_len   length of 'hs_array'
-// Returns 'true' if a touch was handled - screen needs refresh.
+// Returns the result of the handler, if called.  Handlers will return
+// 'true' if the screen needs a refresh, 'false' if no redraw required.
 //----------------------------------------
 
 bool hs_handletouch(int touch_x, int touch_y,

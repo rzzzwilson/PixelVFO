@@ -35,7 +35,7 @@ struct Menu
 
 // menu functions
 void menu_dump(const char *msg, struct Menu *menu);
-bool menu_show(struct Menu *menu);
+void menu_show(struct Menu *menu);
 const char *mi_display(struct MenuItem *mi);
 void menuBackButton(void);
 

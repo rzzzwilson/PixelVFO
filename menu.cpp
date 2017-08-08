@@ -28,7 +28,68 @@ extern int ts_width;
 #define MENUBACK_BG2        ILI9341_GREEN
 #define MENUBACK_X          (ts_width - MENUBACK_WIDTH - 1)
 #define MENUBACK_Y          ((DEPTH_FREQ_DISPLAY - MENUBACK_HEIGHT)/2)
+#define MENU_ITEM_BG        0x0700
 
+
+//----------------------------------------
+// Handler if user clicks on "Back" button.
+//     hs  address of HotSpot item clicked on (the "Back" button)
+//
+// Just returns 'true' - a signal that we should return from the menu.
+//----------------------------------------
+
+bool hs_menuback_handler(HotSpot *hs, void *ignore)
+{
+  return true;
+}
+
+//----------------------------------------
+// Handler if user clicks on a MenuItem hotspot.
+//     hs   address of HotSpot MenuItem clicked on
+//     mi   address of MenuItem to action
+//     num  number of MenuItems on menu
+//----------------------------------------
+
+bool hs_menuitem_handler(HotSpot *hs, void *mi)
+{
+  MenuItem *mi_ptr = (MenuItem *) mi;
+  
+  Serial.printf(F(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n"),
+                hs_display(hs), mi_display(mi_ptr));
+  if (mi_ptr->menu)
+    menu_show(mi_ptr->menu);
+  else
+    mi_ptr->action();
+  Serial.printf(F(">>>>> hs_menuitem_handler: \n"));
+  return false;
+}
+
+// Define the Hotspots the menu uses
+static HotSpot hs_menu[] =
+{
+  {MENUBACK_X, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 0},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 1},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 2},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 3},
+  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 4},
+};
+
+//----------------------------------------
+// Draw highlight around MenuItems in a Menu.
+//     hs_ptr  address of first HotSpot in array
+//     len     number of ACTIVE MenuItems in array (not including "Back")
+//----------------------------------------
+
+void menu_hilite_items(HotSpot hs_ptr[], int len)
+{
+  for (int i = 1; i < len; ++i) // skip the "Back" button
+  {
+    HotSpot *hs = &hs_ptr[i];
+    
+    tft.drawRect(hs->x, hs->y, hs->w, hs->h, MENU_ITEM_BG);
+  }
+}
 
 //----------------------------------------
 // Format one HotSpotMenu struct into a display string.
@@ -118,56 +179,12 @@ static void menu_draw(struct Menu *menu)
 
     // write indexed item on lower row, right-justified
     tft.fillRect(0, menuitem_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
-    tft.setCursor(ts_width - w, menuitem_y);
+    tft.setCursor(ts_width - w - 5, menuitem_y - 10);
     tft.print(menu->items[i]->title);
   }
-}
-
-//----------------------------------------
-// Handler if user clicks on "Back" button.
-//     hs  address of HotSpot item clicked on (the "Back" button)
-//
-// Just returns 'true' - a signal that we should return from the menu.
-//----------------------------------------
-
-bool hs_menuback_handler(HotSpot *hs, void *ignore)
-{
-  return true;
-}
-
-//----------------------------------------
-// Handler if user clicks on a MenuItem hotspot.
-//     hs   address of HotSpot MenuItem clicked on
-//     mi   address of MenuItem to action
-//     num  number of MenuItems on menu
-//----------------------------------------
-
-bool hs_menuitem_handler(HotSpot *hs, void *mi)
-{
-  MenuItem *mi_ptr = (MenuItem *) mi;
   
-  Serial.printf(F(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n"),
-                hs_display(hs), mi_display(mi_ptr));
-  if (mi_ptr->menu)
-    menu_show(mi_ptr->menu);
-  else
-    mi_ptr->action();
-  Serial.printf(F(">>>>> hs_menuitem_handler: \n"));
-  return false;
+  menu_hilite_items(hs_menu, menu->num_items);  // DEBUG
 }
-
-// Define the Hotspots the menu uses
-static HotSpot hs_menu[] =
-{
-  {0, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 1},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 2},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 3},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 4},
-};
-
-#define MenuHSLen   ALEN(hs_menu)
 
 //----------------------------------------
 // Handle a touch on a menu hotspot.
@@ -212,6 +229,7 @@ bool menu_handletouch(int touch_x, int touch_y,
         {
           Serial.printf(F("menu_handletouch: new menu: %s\n"), mi_display(mi));
           menu_show(mi->menu);
+          menu_draw(menu);    // redraw current menu
           Serial.printf(F("menu_handletouch: menu, returning false\n"));
           return false;
         }
@@ -219,6 +237,7 @@ bool menu_handletouch(int touch_x, int touch_y,
         {
           Serial.printf(F("menu_handletouch: action: %s\n"), mi_display(mi));
           mi->action();
+          menu_draw(menu);    // redraw current menu
           Serial.printf(F("menu_handletouch: action, returning false\n"));
           return false;
         }
@@ -229,7 +248,7 @@ bool menu_handletouch(int touch_x, int touch_y,
       else
       {
         // off active MenuItems, just return
-        Serial.printf(F("menu_handletouch: no hotspot touch, returning 'false'\n"));
+        Serial.printf(F("menu_handletouch: no ACTIVE hotspot touch, returning 'false'\n"));
         return false;
       }
     }
@@ -241,11 +260,9 @@ bool menu_handletouch(int touch_x, int touch_y,
 //----------------------------------------
 // Handle a menu.
 //     menu    pointer to a defining Menu structure
-//
-// Handle events in the loop here.
 //----------------------------------------
 
-bool menu_show(struct Menu *menu)
+void menu_show(struct Menu *menu)
 {  
   Serial.printf(F("menu_show: called\n"));
     
@@ -265,14 +282,12 @@ bool menu_show(struct Menu *menu)
     { 
       case event_Down:
         Serial.printf("menu_show: loop: Event %s\n", event2display(event));
-        if (menu_handletouch(event->x, event->y, hs_menu, MenuHSLen, menu))
+        if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), menu))
         {
           Serial.printf(F("menu_show loop: menu_handletouch() returned 'true', exit menu\n"));
-          event_flush();
-          return false;
+          return;
         }
         Serial.printf(F("menu_show loop: redrawing menu %p\n"), menu);
-        menu_draw(menu);    // redraw the menu page
         break;
       case event_None:
         break;
