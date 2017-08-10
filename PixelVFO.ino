@@ -70,7 +70,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define MENUBTN_BG2            0x4000
 #define MENUBTN_FG             ILI9341_BLUE
 
-#define CREDIT_FG              ILI9341_BLUE
+#define CREDIT_FG              ILI9341_BLACK
+#define CREDIT_BG              ILI9341_BLUE
 
 // ONLINE button definitions
 #define ONLINE_WIDTH        110
@@ -349,11 +350,11 @@ void credits_action(void)
   Serial.printf(F("credits_action: called\n"));
 
   // start drawing things that don't change
-  tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
-  tft.fillRect(0, 0, tft.width(), tft.height(), FREQ_SEL_BG);
+//  tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
+  tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
   tft.setCursor(5, FREQ_OFFSET_Y);
-  tft.setTextColor(FREQ_FG);
+  tft.setTextColor(CREDIT_FG);
   tft.setFont(FONT_MENU);
   tft.print("Credits");
   menuBackButton();
