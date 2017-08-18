@@ -26,6 +26,7 @@ struct HotSpot
   int h;                // hotspot height in pixels
   HS_Handler handler;   // address of handler function
   int arg;              // first arg to handler
+//  void *ptr;            // utility address (used for menus)
 };
 
 // hotspot functions

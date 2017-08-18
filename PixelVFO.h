@@ -15,9 +15,12 @@
 // constants for main screen layout
 #define NUM_F_CHAR            8     // number digits in frequency display
 #define CHAR_WIDTH            27    // width of each frequency digit
-#define FREQ_OFFSET_Y         40    // offset from top of frequency digits
+#define TOP_BAR_Y             40    // offset from top of frequency digits
 #define FREQ_OFFSET_X         40    // offset from left of frequency digits
 #define MHZ_OFFSET_X          257   // offset from left of the 'Hz' units
+
+#define TITLE_OFFSET_X        5     // offset from left of menu title string
+#define TITLE_OFFSET_Y        37    // offset from top of menu title string
 
 #define SCREEN_BG           ILI9341_BLACK
 #define SCREEN_BG3          ILI9341_LIGHTGREY
@@ -39,5 +42,8 @@ extern Adafruit_ILI9341 tft;
 
 // the abort() function exported from the top-level code
 void abort(const char *msg);
+
+// the debug routine - writes to Serial output
+void debug(const char *format, ...);
 
 #endif

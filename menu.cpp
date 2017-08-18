@@ -13,13 +13,19 @@
 #include "hotspot.h"
 
 extern int ts_width;
+extern int ts_height;
 
 // constants for the menu system
 #define MENU_FG             ILI9341_BLACK
 #define MENU_BG             ILI9341_GREEN
-#define MENUITEM_HEIGHT     35
+#define MENUITEM_HEIGHT     38
 #define MAXMENUITEMROWS     5
 
+#define MENU_SCROLL_WIDTH   20
+#define SCROLL_FG           ILI9341_WHITE
+//#define SCROLL_BG           ILI9341_BLACK
+#define SCROLL_BG           ILI9341_RED
+#define SCROLL_HEIGHT       20
 
 #define MENUBACK_WIDTH      80
 #define MENUBACK_HEIGHT     35
@@ -47,49 +53,90 @@ bool hs_menuback_handler(HotSpot *hs, void *ignore)
 // Handler if user clicks on a MenuItem hotspot.
 //     hs   address of HotSpot MenuItem clicked on
 //     mi   address of MenuItem to action
-//     num  number of MenuItems on menu
 //----------------------------------------
 
 bool hs_menuitem_handler(HotSpot *hs, void *mi)
 {
   MenuItem *mi_ptr = (MenuItem *) mi;
   
-  Serial.printf(F(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n"),
-                hs_display(hs), mi_display(mi_ptr));
+  debug(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
+        hs_display(hs), mi_display(mi_ptr));
   if (mi_ptr->menu)
     menu_show(mi_ptr->menu);
   else
     mi_ptr->action();
-  Serial.printf(F(">>>>> hs_menuitem_handler: \n"));
+  debug(">>>>> hs_menuitem_handler: \n");
+  return false;
+}
+
+//----------------------------------------
+// Handler if user clicks UP on a scrollbar widget.
+//     hs    address of HotSpot item clicked on
+//     mptr  address of Menu
+//----------------------------------------
+
+bool hs_scroll_up(HotSpot *hs, void *mptr)
+{
+  Menu *menu = (Menu *) mptr;
+  int arg = hs->arg;
+
+  debug(">>>>> hs_scroll_down: entered, arg=%d\n", arg);
+  menu_dump("hs_scroll_up: menu", menu); 
+
+  // add 'arg' to menu 'top' value and normalize
+  menu->top -= arg;
+  if (menu->top < 0)
+      menu->top = 0;
+  debug("after, menu->top=%d\n", menu->top);
+
+  debug("<<<<< hs_scroll_up: returning false\n");
+  return false;
+}
+
+//----------------------------------------
+// Handler if user clicks DOWN on a scrollbar widget.
+//     hs   address of HotSpot item clicked on
+//     mi   address of MenuItem to action
+//----------------------------------------
+
+bool hs_scroll_down(HotSpot *hs, void *mptr)
+{
+  Menu *menu = (Menu *) mptr;
+  int arg = hs->arg;
+
+  debug(">>>>> hs_scroll_down: entered, arg=%d\n", arg);
+  menu_dump("hs_scroll_up: menu", menu); 
+
+  // add 'arg' to menu 'top' value and normalize
+  menu->top += arg;
+  if (menu->top > menu->num_items - MAXMENUITEMROWS)
+      menu->top = menu->num_items - MAXMENUITEMROWS;
+  debug("after, menu->top=%d\n", menu->top);
+
+  debug("<<<<< hs_scroll_down: returning false\n");
   return false;
 }
 
 // Define the Hotspots the menu uses
 static HotSpot hs_menu[] =
 {
-  {MENUBACK_X, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 0},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 1},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 2},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 3},
-  {0, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT,    hs_menuitem_handler, 4},
+  // menuitem hotspots
+  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 0},
+  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 1},
+  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
+  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
+  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
 };
 
-//----------------------------------------
-// Draw highlight around MenuItems in a Menu.
-//     hs_ptr  address of first HotSpot in array
-//     len     number of ACTIVE MenuItems in array (not including "Back")
-//----------------------------------------
-
-void menu_hilite_items(HotSpot hs_ptr[], int len)
+// Define the Hotspots the menu uses
+static HotSpot hs_other[] =
 {
-  for (int i = 1; i < len; ++i) // skip the "Back" button
-  {
-    HotSpot *hs = &hs_ptr[i];
-    
-    tft.drawRect(hs->x, hs->y, hs->w, hs->h, MENU_ITEM_BG);
-  }
-}
+  // the 'Back' button
+  {MENUBACK_X, 0, ts_width-MENUBACK_X, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
+  // the 'scroll' hotspots
+  {0, DEPTH_FREQ_DISPLAY, 50, 50, hs_scroll_up, 1},
+  {0, ts_height-50, 50, 50, hs_scroll_down, 1},
+};
 
 //----------------------------------------
 // Format one HotSpotMenu struct into a display string.
@@ -100,9 +147,9 @@ void menu_hilite_items(HotSpot hs_ptr[], int len)
 
 const char *mi_display(struct MenuItem *mi)
 {
-  static char buffer[128];
+  static char buffer[256];
 
-  sprintf(buffer, "mi: %p, title=%s, menu=%p, action=%p", mi, mi->title, mi->menu, mi->action);
+  sprintf(buffer, "mi: %p, title=%s, menu=%p, action=%p\n", mi, mi->title, mi->menu, mi->action);
   
   return buffer;
 }
@@ -117,16 +164,16 @@ const char *mi_display(struct MenuItem *mi)
 
 void menu_dump(char const *msg, Menu *menu)
 {
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
-  Serial.printf(F("Menu: %s\n"), msg);
-  Serial.printf(F("  title=%s, num items=%d\n"), menu->title, menu->num_items);
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  debug("Menu: %s\n", msg);
+  debug("  title=%s, top=%d, num items=%d\n", menu->title, menu->top, menu->num_items);
 
   for (int i = 0; i < menu->num_items; ++i)
   {
     struct MenuItem *mi_ptr = menu->items[i];
-    Serial.printf(F("    mi %d: %s\n"), i, mi_display(mi_ptr));
+    debug("    mi %d: %s", i, mi_display(mi_ptr));
   }
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 
@@ -151,109 +198,158 @@ void menuBackButton(void)
   
 static void menu_draw(struct Menu *menu)
 {
-  Serial.printf(F("menu_draw: drawing menu %p\n"), menu);
-  
+  debug("menu_draw: drawing menu %p\n", menu);
+
   // clear screen and write menu title on upper row
   tft.fillScreen(SCREEN_BG);
   tft.setTextWrap(false);
     
   // start drawing things that don't change
-  tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.setCursor(0, FREQ_OFFSET_Y);
+  tft.fillRect(0, 0, ts_width, DEPTH_FREQ_DISPLAY, FREQ_BG);
+  tft.setCursor(TITLE_OFFSET_X, TITLE_OFFSET_Y);
   tft.setTextColor(MENU_FG);
   tft.setFont(FONT_MENU);
   tft.print(menu->title);
   menuBackButton();
-    
-  // draw menuitems 
+
+  // draw menuitems (at least, those that fit on screen
   tft.setFont(FONT_MENUITEM);
-  for (int i = 0; i < menu->num_items; ++ i)
+  int mi_y = DEPTH_FREQ_DISPLAY + MENUITEM_HEIGHT;
+  for (int i = menu->top; i < menu->top + MAXMENUITEMROWS; ++i)
   {
+    if (i > menu->num_items)
+      break;
+      
     int16_t x1;
     int16_t y1;
     uint16_t w;
     uint16_t h;
-    int menuitem_y = DEPTH_FREQ_DISPLAY + i*MENUITEM_HEIGHT + MENUITEM_HEIGHT;
+//    int menuitem_y = DEPTH_FREQ_DISPLAY + i*MENUITEM_HEIGHT + MENUITEM_HEIGHT;
 
     tft.getTextBounds((char *) menu->items[i]->title, 0, 0, &x1, &y1, &w, &h);
 
     // write indexed item on lower row, right-justified
-    tft.fillRect(0, menuitem_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
-    tft.setCursor(ts_width - w - 5, menuitem_y - 10);
+    tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
+    tft.setCursor(ts_width - w - 5, mi_y - 10);
     tft.print(menu->items[i]->title);
+    mi_y += MENUITEM_HEIGHT;
   }
   
-  menu_hilite_items(hs_menu, menu->num_items);  // DEBUG
+  // highlight the active menuitems
+  for (int i = 1; i <= menu->num_items; ++i) // skip the "Back" button
+  {
+    HotSpot *hs = &hs_menu[i];
+    
+    //tft.drawFastHLine(0, hs->y+MENUITEM_HEIGHT, ts_width, MENU_ITEM_BG);
+    tft.drawRect(hs->x, hs->y, hs->w, hs->h, MENU_ITEM_BG);
+  }
+
+  // draw the scroll widget if required
+  if (menu->num_items > MAXMENUITEMROWS)
+  {
+    tft.fillRect(0, DEPTH_FREQ_DISPLAY,
+                 MENU_SCROLL_WIDTH, ts_height - DEPTH_FREQ_DISPLAY, SCROLL_BG);
+    tft.fillTriangle(0, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
+                     MENU_SCROLL_WIDTH-1, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
+                     MENU_SCROLL_WIDTH/2, DEPTH_FREQ_DISPLAY,
+                     SCROLL_FG);
+    tft.fillTriangle(0, ts_height-1-SCROLL_HEIGHT,
+                     MENU_SCROLL_WIDTH-1, ts_height-1-SCROLL_HEIGHT,
+                     MENU_SCROLL_WIDTH/2, ts_height-1,
+                     SCROLL_FG);
+  }
 }
+
+#if 0
+bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
+{
+  for (int i = 0; i < hs_len; ++hs, ++i)
+  {
+    if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
+        (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
+    {
+      debug(">>>>> hs_handletouch: calling hs->handler=%p\n", hs->handler);
+
+      return (hs->handler)(hs, (void *) NULL);
+
+      bool result =  (hs->handler)(hs, (void *) NULL);
+      debug("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
+            hs->handler, result ? "true" : "false");
+      return result;
+    }
+  }
+
+  return false;
+}
+#endif
 
 //----------------------------------------
 // Handle a touch on a menu hotspot.
-//     touch_x  X coord of screen touch
-//     touch_y  Y coord of screen touch
+//     x        X coord of screen touch
+//     y        Y coord of screen touch
 //     hs       base address of array of HotSpots
-//     hs_len   length of 'hs_array'
-//     menu     address of menu structure
+//     hslen    length of 'hs_array'
+//     is_menu  'true' if this a MenuItem touch
+//     menu     address of menu structure (NULL if no menu)
 //
-// Calls the hotspot handler defined in 'hs' passing:
-//     the 'arg' parameter from 'hs'
-//     a pointer to the activated MenuItem
+// If spot selected then call menu action routine if 'menu' not NULL,
+// else call HotSpot action routine.  Return value of either routine.
 //
 // Returns 'true' if menu is finished.
 //----------------------------------------
 
-bool menu_handletouch(int touch_x, int touch_y,
-                      HotSpot *hs, int hs_len, struct Menu *menu)
+bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct Menu *menu)
 {
-  Serial.printf(F("menu_handletouch: entered\n"));
-  
-  for (int i = 0; i < hs_len; ++hs, ++i)
-  {
-    Serial.printf(F("menu_handletouch: i=%d, touch_x=%d, touch_y=%d, "), i, touch_x, touch_y);
-    Serial.printf(F("hs->x=%d, hs->y=%d, hs->w=%d, hs->h=%d\n"), hs->x, hs->y, hs->w, hs->h);
+  debug(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, is_menu=%s\n", is_menu ? "true" : "false");
+  if (is_menu)
+    menu_dump("menu: ", menu);
+  else
+    debug("menu: NULL\n");
+  hs_dump("menu hotspots", hs, hslen);
 
-    if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
-        (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
+  for (int i = 0; i < hslen; ++hs, ++i)
+  {
+    debug("loop top: i=%d, x=%d, y=%d, hs->handler=%p, hs->arg=%d, ",
+          i, x, y, hs->handler, hs->arg);
+    debug("hs->x=%d, hs->y=%d, hs->w=%d, hs->h=%d\n", hs->x, hs->y, hs->w, hs->h);
+
+    if ((x >= hs->x) && (x < hs->x + hs->w) &&
+        (y >= hs->y) && (y < hs->y + hs->h))
     {
-      if (i <= menu->num_items)
-      {
-        if (i == 0)
-        {
-          // the "Back" button was pressed
-          Serial.printf(F("menu_handletouch: BACK, returning true\n"));
-          return true;
-        }
-        
-        struct MenuItem *mi = menu->items[i-1];
+      debug("FOUND HIT\n");
+      
+      if (is_menu)
+      { // we have a menu
+        debug("hit, menu=%p\n", menu);
+        struct MenuItem *mi = menu->items[i];
+        debug("Checking mi %d: %s\n", mi_display(mi));
 
         if (mi->menu)
         {
-          Serial.printf(F("menu_handletouch: new menu: %s\n"), mi_display(mi));
+          debug("menu_handletouch: calling new menu\n");
+        struct MenuItem *mi = menu->items[i];
+        debug("Checking mi %d: %s\n", mi_display(mi));
           menu_show(mi->menu);
           menu_draw(menu);    // redraw current menu
-          Serial.printf(F("menu_handletouch: menu, returning false\n"));
+          debug("<<<<<<<<<<<<<<<<<<<< menu_handletouch: menu, returning false\n");
           return false;
         }
-        else if (mi->action)
-        {
-          Serial.printf(F("menu_handletouch: action: %s\n"), mi_display(mi));
-          mi->action();
-          menu_draw(menu);    // redraw current menu
-          Serial.printf(F("menu_handletouch: action, returning false\n"));
-          return false;
-        }
-        else
-            Serial.printf(F("menu_handletouch: MenuItem %d has both 'menu' and 'action' NULL!?"));
+        
+        // else call mi->action()
+        debug("menu_handletouch: calling menuitem action routine: %p\n", mi->action);
+        mi->action();
+        menu_draw(menu);    // redraw current menu
+        debug("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
         return false;
       }
       else
-      {
-        // off active MenuItems, just return
-        Serial.printf(F("menu_handletouch: no ACTIVE hotspot touch, returning 'false'\n"));
-        return false;
+      { // just call action HotSpot routine
+        debug("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
+        return hs->handler(hs, (void *) menu);
       }
     }
   }
-  Serial.printf(F("menu_handletouch: end of items, returning 'false'\n"));
+  debug("<<<<<<<<<<<<<<<<<<<< menu_handletouch: end of items, returning 'false'\n");
   return false;
 }
 
@@ -264,8 +360,13 @@ bool menu_handletouch(int touch_x, int touch_y,
 
 void menu_show(struct Menu *menu)
 {  
-  Serial.printf(F("menu_show: called\n"));
-    
+  debug("********************** menu_show: called\n");
+  debug("hs_menuback_handler: %p\n", hs_menuback_handler);
+  debug("hs_menuitem_handler: %p\n", hs_menuitem_handler);
+  debug("hs_scroll_up: %p\n", hs_scroll_up);
+  debug("hs_scroll_down: %p\n", hs_scroll_down);
+  hs_dump("menu hotspots", hs_menu, ALEN(hs_menu));
+  
   // draw the menu page
   menu_draw(menu);
           
@@ -281,13 +382,24 @@ void menu_show(struct Menu *menu)
     switch (event->event)
     { 
       case event_Down:
-        Serial.printf("menu_show: loop: Event %s\n", event2display(event));
-        if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), menu))
+        debug("menu_show: loop: Event %s\n", event2display(event));
+        
+        debug("Checking menuitems\n");
+        if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), true, menu))
         {
-          Serial.printf(F("menu_show loop: menu_handletouch() returned 'true', exit menu\n"));
+          debug("menu_show loop: hs_menu: menu_handletouch() returned 'true', exit menu\n");
           return;
         }
-        Serial.printf(F("menu_show loop: redrawing menu %p\n"), menu);
+        
+        debug("Checking menu hotspots\n");
+        if (menu_handletouch(event->x, event->y, hs_other, ALEN(hs_other), false, menu))
+        {
+          debug("menu_show loop: menu_handletouch() returned 'true', exit menu\n");
+          return;
+        }
+        
+        debug("menu_show loop: hs_other: redrawing menu %p\n", menu);
+        menu_draw(menu);
         break;
       case event_None:
         break;

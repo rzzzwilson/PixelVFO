@@ -75,8 +75,7 @@ void event_push(Event event, int x, int y)
   if (queue_aft == queue_fore)
   {
       event_dump_queue("ERROR: event queue full!");
-      Serial.printf("Event queue full\n");
-      
+      debug("Event queue full\n");
       abort("ERROR: event queue full!");
   }
 }
@@ -161,21 +160,21 @@ void event_dump_queue(const char *msg)
   // Must protect from RE code fiddling with queue
   noInterrupts();
 
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
-  Serial.printf(F("Queue: %s\n"), msg);
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  debug("Queue: %s\n", msg);
   for (int i = 0; i < EventQueueLength; ++i)
   {
     VFOEvent *event = &event_queue[i];
 
-    Serial.printf(F("  %d -> %s\n"), i, event2display(event));
+    debug("  %d -> %s\n", i, event2display(event));
   }
   if (event_pending() == 0)
-    Serial.printf(F("Queue length=0 (or %d)\n"), EventQueueLength);
+    debug("Queue length=0 (or %d)\n", EventQueueLength);
   else
-    Serial.printf(F("Queue length=%d\n"), event_pending());
-  Serial.printf(F("queue_aft=%d"), queue_aft);
-  Serial.printf(F(", queue_fore=%d\n"), queue_fore);
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
+    debug("Queue length=%d\n", event_pending());
+  debug("queue_aft=%d", queue_aft);
+  debug(", queue_fore=%d\n", queue_fore);
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
   interrupts();
 }

@@ -4,6 +4,8 @@
  * VK4FAWR - rzzzwilson@gmail.com
  ****************************************************/
 
+#include <stdio.h>
+#include <stdarg.h>
 #include <SPI.h>
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
@@ -13,7 +15,7 @@
 #include "menu.h"
 
 #define MAJOR_VERSION   "0"
-#define MINOR_VERSION   "2"
+#define MINOR_VERSION   "3"
 #define CALLSIGN        "vk4fawr"
 
 #define SCREEN_WIDTH    320
@@ -112,6 +114,24 @@ VFOState vfo_state = VFO_Standby;
 
 
 //-----------------------------------------------
+// Debug routine - print varargs to a static buffer.
+//     format  the pritf-style format string
+//     num   number of bytes to dump
+//-----------------------------------------------
+
+void debug(const char *format, ...)
+{
+  static char buff[256];
+  va_list aptr;
+
+  va_start(aptr, format);
+  vsprintf(buff, format, aptr);
+  va_end(aptr);
+
+  Serial.printf(buff);
+}
+
+//-----------------------------------------------
 // Helper for the dumphex() function.
 //     base  (void *) pointer to a byte in memory
 //     num   number of bytes to dump
@@ -121,9 +141,9 @@ void dumphex_helper(char *base, int num)
 {
   for (int i = 0; i < 16; ++i)
   {
-    Serial.printf(F("%02x "), *(base + i));
+    Serial.printf("%02x ", *(base + i));
   }
-  Serial.printf(F("\n"));
+  Serial.printf("\n");
 }
 
 //-----------------------------------------------
@@ -137,15 +157,15 @@ void dumphex(const char *msg, void *base, int num)
 {
   char *off = (char *) base;
 
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
-  Serial.printf(F("HexDump: %s\n"), msg);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", msg);
+  Serial.printf("HexDump: %s\n", msg);
   while (num > 0)
   {
     dumphex_helper(off, 16);
     num -= 16;
     off += 16;
   }
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", msg);
 }
 
 //-----------------------------------------------
@@ -156,6 +176,9 @@ void dumphex(const char *msg, void *base, int num)
 void abort(const char *msg)
 {
   // TODO: write message on the screen, with wrap-around
+  Serial.printf("*********************************************************\n");
+  Serial.printf("%s\n", msg);
+  Serial.printf("*********************************************************\n");
   while (1);
 }
 
@@ -197,7 +220,6 @@ void touch_irq(void)
 
 void freq_show(int select=-1)
 {
-  Serial.printf("freq_show: select=%d\n", select);
   bool leading_space = true;
 
   tft.setFont(FONT_FREQ);
@@ -211,11 +233,10 @@ void freq_show(int select=-1)
                    
     if ((freq_display[i] != '0') || !leading_space)
     {
-      tft.drawChar(freq_char_x_offset[i], FREQ_OFFSET_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
+      tft.drawChar(freq_char_x_offset[i], TOP_BAR_Y, freq_display[i], FREQ_FG, FREQ_BG, 1);
       leading_space = false;
     }
   }
-  Serial.println(F("freq_show: finished"));
 }
 
 //-----------------------------------------------
@@ -225,11 +246,10 @@ void freq_show(int select=-1)
 
 void freq_unselect(int select)
 {
-  Serial.printf("freq_unselect: select=%d\n", select);
   tft.fillRect(freq_char_x_offset[select]-1, 2,
                CHAR_WIDTH+1, DEPTH_FREQ_DISPLAY-4, FREQ_BG);
   tft.setFont(FONT_FREQ);
-  tft.drawChar(freq_char_x_offset[select], FREQ_OFFSET_Y,
+  tft.drawChar(freq_char_x_offset[select], TOP_BAR_Y,
                freq_display[select], FREQ_FG, FREQ_BG, 1);
 }
 
@@ -300,37 +320,37 @@ void display_flash(void)
 
 void reset_no_action(void)
 {
-  Serial.printf(F("reset_no_action: called\n"));
+  Serial.printf("reset_no_action: called\n");
 }
 
 void reset_action(void)
 {
-  Serial.printf(F("reset_action: called\n"));
+  Serial.printf("reset_action: called\n");
 }
 
 void brightness_action(void)
 {
-  Serial.printf(F("brightness_action: called\n"));
+  Serial.printf("brightness_action: called\n");
 }
 
 void calibrate_action(void)
 {
-  Serial.printf(F("calibrate_action: called\n"));
+  Serial.printf("calibrate_action: called\n");
 }
 
 void saveslot_action(void)
 {
-  Serial.printf(F("saveslot_action: called\n"));
+  Serial.printf("saveslot_action: called\n");
 }
 
 void restoreslot_action(void)
 {
-  Serial.printf(F("restoreslot_action: called\n"));
+  Serial.printf("restoreslot_action: called\n");
 }
 
 void deleteslot_action(void)
 {
-  Serial.printf(F("deleteslot_action: called\n"));
+  Serial.printf("deleteslot_action: called\n");
 }
 
 bool hs_creditsback_handler(HotSpot *hs, void *ignore)
@@ -347,19 +367,14 @@ static HotSpot hs_credits[] =
 
 void credits_action(void)
 {
-  Serial.printf(F("credits_action: called\n"));
-
-  // start drawing things that don't change
-//  tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
+  // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
-  tft.setCursor(5, FREQ_OFFSET_Y);
+  tft.setCursor(5, TOP_BAR_Y);
   tft.setTextColor(CREDIT_FG);
   tft.setFont(FONT_MENU);
   tft.print("Credits");
   menuBackButton();
-
-  // draw actual credit stuff
   tft.setFont(FONT_CREDIT);
   tft.setTextColor(CREDIT_FG);
   tft.setCursor(15, 150);
@@ -368,7 +383,6 @@ void credits_action(void)
   tft.setCursor(180, 230);
   tft.printf("%s", CALLSIGN);
   
-
   // handle all events in the queue
   event_flush();
   while (true)
@@ -397,25 +411,28 @@ void credits_action(void)
 struct MenuItem mi_reset_no = {"No", NULL, &reset_no_action};
 struct MenuItem mi_reset_yes = {"Yes", NULL, &reset_action};
 struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
-struct Menu reset_menu = {"Reset all", ALEN(mia_reset), mia_reset};          
+struct Menu reset_menu = {"Reset all", 0, ALEN(mia_reset), mia_reset};          
 
 struct MenuItem mi_brightness = {"Brightness", NULL, &brightness_action};
 struct MenuItem mi_calibrate = {"Calibrate", NULL, &calibrate_action};
 struct MenuItem *mia_settings[] = {&mi_brightness, &mi_calibrate};
-struct Menu settings_menu = {"Settings", ALEN(mia_settings), mia_settings};
+struct Menu settings_menu = {"Settings", 0, ALEN(mia_settings), mia_settings};
 
 struct MenuItem mi_saveslot = {"Save slot", NULL, &saveslot_action};
 struct MenuItem mi_restoreslot = {"Restore slot", NULL, &restoreslot_action};
 struct MenuItem mi_deleteslot = {"Delete slot", NULL, &deleteslot_action};
 struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
-struct Menu slots_menu = {"Slots", ALEN(mia_slots), mia_slots};
+struct Menu slots_menu = {"Slots", 0, ALEN(mia_slots), mia_slots};
 
 struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
 struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
 struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
-struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
-struct Menu menu_main = {"Menu", ALEN(mia_main), mia_main};
+struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
+struct MenuItem mi_credits3 = {"Credits3", NULL, &credits_action};
+struct MenuItem mi_credits4 = {"Credits4", NULL, &credits_action};
+struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2, &mi_credits3, &mi_credits4};
+struct Menu menu_main = {"Menu", 0, ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
 // Code to handle the 'online' and 'menu' buttons.
@@ -478,7 +495,6 @@ void undrawMenuButton(void)
 
 void draw_screen(void)
 {
-  Serial.printf(F("draw_screen: called\n"));
   tft.setFont(FONT_FREQ);
 
   // start drawing things that don't change
@@ -486,7 +502,7 @@ void draw_screen(void)
   tft.setTextWrap(false);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
   tft.fillRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, FREQ_BG);
-  tft.setCursor(MHZ_OFFSET_X, FREQ_OFFSET_Y);
+  tft.setCursor(MHZ_OFFSET_X, TOP_BAR_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
 
@@ -643,8 +659,6 @@ bool keypad_close_handler(HotSpot *hs, void *ignore)
 
 bool keypad_freq_handler(HotSpot *hs, void *ignore)
 {
-  Serial.printf("keypad_freq_handler: called, arg=%d\n", hs->arg);
-
   freq_digit_select = hs->arg;
   freq_show(freq_digit_select);
   
@@ -750,7 +764,6 @@ void keypad_show(int offset)
       case event_Down:
         if (hs_handletouch(event->x, event->y, hs_keypad, KeypadHSLen))
         {
-          Serial.printf("hs_handletouch() returned 'true', end of keypad\n");
           //freq_show();
           return;
         }
@@ -770,13 +783,6 @@ void setup(void)
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
   menu_dump("setup: menu_main", &menu_main);
-//  struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
-  for (int i = 0; i < 4; ++i)
-  {
-    struct MenuItem *m = mia_main[i];
-    Serial.printf(F("MI: %d, mi=%p (%s)\n"), i, m, mi_display(m));
-  }
-
   dumphex("menu_main", (void *) &menu_main, 64);
   
   // link the TS_IRQ pin to its interrupt handler
@@ -841,7 +847,7 @@ void loop()
           freq_show();
           Serial.printf("loop: finished refreshing display\n");
         }
-        Serial.printf(F("loop: After event_Down in loop()\n"));
+        Serial.printf("loop: After event_Down in loop()\n");
         break;
       case event_None:
         return;

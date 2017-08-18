@@ -6,6 +6,7 @@
 // associated (x, y) coordinates, call the appropriate handler (if any).
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "PixelVFO.h"
 #include "hotspot.h"
 
 //----------------------------------------
@@ -34,15 +35,15 @@ const char *hs_display(HotSpot *hs)
 
 void hs_dump(char const *msg, HotSpot *hs_array, int len)
 {
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
-  Serial.printf(F("HotSpot array: %s\n"), msg);
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  debug("HotSpot array: %s\n", msg);
   for (int i = 0; i < len; ++i)
   {
     HotSpot *hs = &hs_array[i];
 
-    Serial.printf(F("  %d: %s\n"), i, hs_display(hs));
+    debug("  %d: %s\n", i, hs_display(hs));
   }
-  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"));
+  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 //----------------------------------------
@@ -55,18 +56,20 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 // 'true' if the screen needs a refresh, 'false' if no redraw required.
 //----------------------------------------
 
-bool hs_handletouch(int touch_x, int touch_y,
-                    HotSpot *hs, int hs_len)
+bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
 {
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      Serial.printf(F(">>>>> hs_handletouch: calling hs->handler=%p\n"), hs->handler);
+      debug(">>>>> hs_handletouch: calling hs->handler=%p\n", hs->handler);
+
+      return (hs->handler)(hs, (void *) NULL);
+
       bool result =  (hs->handler)(hs, (void *) NULL);
-      Serial.printf(F("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n"),
-                    hs->handler, result ? "true" : "false");
+      debug("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
+            hs->handler, result ? "true" : "false");
       return result;
     }
   }

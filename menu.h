@@ -28,6 +28,7 @@ struct MenuItem
 struct Menu
 {
   const char *title;          // title displayed on menu page
+  int top;                    // number of items scrolled off the top
   int num_items;              // number of items in the array below
   struct MenuItem **items;    // array of pointers to MenuItem data
 };
