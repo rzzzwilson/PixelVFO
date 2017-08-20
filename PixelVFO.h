@@ -9,6 +9,10 @@
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 
+// macros to enable tailoring of debug calls
+#define DEBUG     debug_ignore
+#define DEBUG2    debug
+
 // macro to get number of elements in an array
 #define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
 

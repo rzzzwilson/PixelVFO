@@ -114,14 +114,28 @@ VFOState vfo_state = VFO_Standby;
 
 
 //-----------------------------------------------
-// Debug routine - print varargs to a static buffer.
-//     format  the pritf-style format string
-//     num   number of bytes to dump
+// Debug routine - IGNORE THE CALL
+//     format  the printf-style format string
+//     ...     the args to 'format'
+//
+// This routine does nothing.
+//-----------------------------------------------
+
+void debug_ignore(const char *format, ...)
+{
+}
+
+//-----------------------------------------------
+// Debug routine - print debug sring to Serial.printf.
+//     format  the printf-style format string
+//     ...     the args to 'format'
+//
+// There is a limit of 512 bytes to the resutant string.
 //-----------------------------------------------
 
 void debug(const char *format, ...)
 {
-  static char buff[256];
+  static char buff[512];
   va_list aptr;
 
   va_start(aptr, format);
@@ -320,37 +334,37 @@ void display_flash(void)
 
 void reset_no_action(void)
 {
-  Serial.printf("reset_no_action: called\n");
+  DEBUG("reset_no_action: called\n");
 }
 
 void reset_action(void)
 {
-  Serial.printf("reset_action: called\n");
+  DEBUG("reset_action: called\n");
 }
 
 void brightness_action(void)
 {
-  Serial.printf("brightness_action: called\n");
+  DEBUG("brightness_action: called\n");
 }
 
 void calibrate_action(void)
 {
-  Serial.printf("calibrate_action: called\n");
+  DEBUG("calibrate_action: called\n");
 }
 
 void saveslot_action(void)
 {
-  Serial.printf("saveslot_action: called\n");
+  DEBUG("saveslot_action: called\n");
 }
 
 void restoreslot_action(void)
 {
-  Serial.printf("restoreslot_action: called\n");
+  DEBUG("restoreslot_action: called\n");
 }
 
 void deleteslot_action(void)
 {
-  Serial.printf("deleteslot_action: called\n");
+  DEBUG("deleteslot_action: called\n");
 }
 
 bool hs_creditsback_handler(HotSpot *hs, void *ignore)
@@ -395,7 +409,7 @@ void credits_action(void)
       case event_Down:
         if (hs_handletouch(event->x, event->y, hs_credits, CreditsHSLen))
         {
-          Serial.printf("credits_action: hs_handletouch() returned 'true', exiting\n");
+          DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
           return;
         }
       default:
@@ -647,7 +661,7 @@ bool keypad_handler(HotSpot *hs, void *ignore)
 
 bool keypad_not_used(HotSpot *hs, void *ignore)
 {
-  Serial.printf("keypad_not_used: called, arg=%d\n", hs->arg);
+  DEBUG("keypad_not_used: called, arg=%d\n", hs->arg);
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
   return false;
 }
@@ -838,16 +852,16 @@ void loop()
     switch (event->event)
     {
       case event_Down:
-        Serial.printf("loop: Event %s\n", event2display(event));
+        DEBUG("loop: Event %s\n", event2display(event));
         hs_dump("main loop:", hs_mainscreen, ALEN(hs_mainscreen));
         if (hs_handletouch(event->x, event->y, hs_mainscreen, ALEN(hs_mainscreen)))
         {
-          Serial.printf("loop: hs_handletouch() returned 'true', refreshing display\n");
+          DEBUG("loop: hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
           freq_show();
-          Serial.printf("loop: finished refreshing display\n");
+          DEBUG("loop: finished refreshing display\n");
         }
-        Serial.printf("loop: After event_Down in loop()\n");
+        DEBUG("loop: After event_Down in loop()\n");
         break;
       case event_None:
         return;
