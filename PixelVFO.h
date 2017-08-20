@@ -47,7 +47,8 @@ extern Adafruit_ILI9341 tft;
 // the abort() function exported from the top-level code
 void abort(const char *msg);
 
-// the debug routine - writes to Serial output
+// the debug routines - writes to Serial output
 void debug(const char *format, ...);
+void debug_ignore(const char *format, ...);
 
 #endif

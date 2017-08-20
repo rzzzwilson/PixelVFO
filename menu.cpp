@@ -75,13 +75,13 @@ bool hs_menuitem_handler(HotSpot *hs, void *mi)
 //     mptr  address of Menu
 //----------------------------------------
 
-bool hs_scroll_up(HotSpot *hs, void *mptr)
+bool menu_scroll_up(HotSpot *hs, void *mptr)
 {
   Menu *menu = (Menu *) mptr;
   int arg = hs->arg;
 
-  DEBUG2(">>>>> hs_scroll_down: entered, arg=%d\n", arg);
-  menu_dump("hs_scroll_up: menu", menu); 
+  DEBUG2(">>>>> menu_scroll_up: entered, arg=%d\n", arg);
+  menu_dump("menu_scroll_up: menu", menu); 
 
   // add 'arg' to menu 'top' value and normalize
   menu->top -= arg;
@@ -89,7 +89,7 @@ bool hs_scroll_up(HotSpot *hs, void *mptr)
       menu->top = 0;
   DEBUG2("after, menu->top=%d\n", menu->top);
 
-  DEBUG2("<<<<< hs_scroll_up: returning false\n");
+  DEBUG2("<<<<< menu_scroll_up: returning false\n");
   return false;
 }
 
@@ -99,13 +99,13 @@ bool hs_scroll_up(HotSpot *hs, void *mptr)
 //     mi   address of MenuItem to action
 //----------------------------------------
 
-bool hs_scroll_down(HotSpot *hs, void *mptr)
+bool menu_scroll_down(HotSpot *hs, void *mptr)
 {
   Menu *menu = (Menu *) mptr;
   int arg = hs->arg;
 
-  DEBUG2(">>>>> hs_scroll_down: entered, arg=%d\n", arg);
-  menu_dump("hs_scroll_up: menu", menu); 
+  DEBUG2(">>>>> menu_scroll_down: entered, arg=%d\n", arg);
+  menu_dump("menu_scroll_down: menu", menu); 
 
   // add 'arg' to menu 'top' value and normalize
   menu->top += arg;
@@ -113,7 +113,7 @@ bool hs_scroll_down(HotSpot *hs, void *mptr)
       menu->top = menu->num_items - MAXMENUITEMROWS;
   DEBUG2("after, menu->top=%d\n", menu->top);
 
-  DEBUG2("<<<<< hs_scroll_down: returning false\n");
+  DEBUG2("<<<<< menu_scroll_down: returning false\n");
   return false;
 }
 
@@ -134,8 +134,8 @@ static HotSpot hs_other[] =
   // the 'Back' button
   {MENUBACK_X, 0, ts_width-MENUBACK_X, DEPTH_FREQ_DISPLAY, hs_menuback_handler, 0},
   // the 'scroll' hotspots
-  {0, DEPTH_FREQ_DISPLAY, 50, 50, hs_scroll_up, 1},
-  {0, ts_height-50, 50, 50, hs_scroll_down, 1},
+  {0, DEPTH_FREQ_DISPLAY, 50, 50, menu_scroll_up, 1},
+  {0, ts_height-50, 50, 50, menu_scroll_down, 1},
 };
 
 //----------------------------------------
@@ -320,15 +320,15 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
       
       if (is_menu)
       { // we have a menu
-        DEBUG2("hit, menu=%p\n", menu);
+        DEBUG2("hit on menu at %p\n", menu);
         struct MenuItem *mi = menu->items[i];
-        DEBUG2("Checking mi %d: %s\n", mi_display(mi));
+        DEBUG2("Checking mi %d: %s\n", i, mi_display(mi));
 
         if (mi->menu)
         {
           DEBUG2("menu_handletouch: calling new menu\n");
-        struct MenuItem *mi = menu->items[i];
-        DEBUG2("Checking mi %d: %s\n", mi_display(mi));
+          struct MenuItem *mi = menu->items[i];
+          DEBUG2("Checking mi %d: %s\n", i, mi_display(mi));
           menu_show(mi->menu);
           menu_draw(menu);    // redraw current menu
           DEBUG2("<<<<<<<<<<<<<<<<<<<< menu_handletouch: menu, returning false\n");
@@ -355,16 +355,16 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
 //----------------------------------------
 // Handle a menu.
-//     menu    pointer to a defining Menu structure
+//     menu  pointer to a Menu structure
 //----------------------------------------
 
 void menu_show(struct Menu *menu)
 {  
-  DEBUG2("********************** menu_show: called\n");
+  DEBUG2("********************** menu_show: called, menu=%p\n", menu);
   DEBUG2("hs_menuback_handler: %p\n", hs_menuback_handler);
   DEBUG2("hs_menuitem_handler: %p\n", hs_menuitem_handler);
-  DEBUG2("hs_scroll_up: %p\n", hs_scroll_up);
-  DEBUG2("hs_scroll_down: %p\n", hs_scroll_down);
+  DEBUG2("menu_scroll_up: %p\n", menu_scroll_up);
+  DEBUG2("menu_scroll_down: %p\n", menu_scroll_down);
   hs_dump("menu hotspots", hs_menu, ALEN(hs_menu));
   
   // draw the menu page
@@ -387,14 +387,14 @@ void menu_show(struct Menu *menu)
         DEBUG2("Checking menuitems\n");
         if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), true, menu))
         {
-          DEBUG2("menu_show loop: hs_menu: menu_handletouch() returned 'true', exit menu\n");
+          DEBUG2("menu_show loop: hs_menu: menu_handletouch() returning\n");
           return;
         }
         
         DEBUG2("Checking menu hotspots\n");
         if (menu_handletouch(event->x, event->y, hs_other, ALEN(hs_other), false, menu))
         {
-          DEBUG2("menu_show loop: menu_handletouch() returned 'true', exit menu\n");
+          DEBUG2("menu_show loop: menu_handletouch() returning\n");
           return;
         }
         

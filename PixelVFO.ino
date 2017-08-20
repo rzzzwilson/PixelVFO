@@ -617,7 +617,6 @@ bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 
 bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
-  menu_dump("menu_hs_handler: menu", &menu_main);
   menu_show(&menu_main);
   return true;
 }
@@ -796,8 +795,6 @@ void setup(void)
 {
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
-  menu_dump("setup: menu_main", &menu_main);
-  dumphex("menu_main", (void *) &menu_main, 64);
   
   // link the TS_IRQ pin to its interrupt handler
   attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);

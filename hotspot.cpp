@@ -35,15 +35,15 @@ const char *hs_display(HotSpot *hs)
 
 void hs_dump(char const *msg, HotSpot *hs_array, int len)
 {
-  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  debug("HotSpot array: %s\n", msg);
+  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  DEBUG("HotSpot array: %s\n", msg);
   for (int i = 0; i < len; ++i)
   {
     HotSpot *hs = &hs_array[i];
 
-    debug("  %d: %s\n", i, hs_display(hs));
+    DEBUG("  %d: %s\n", i, hs_display(hs));
   }
-  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 //----------------------------------------
@@ -63,12 +63,12 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      debug(">>>>> hs_handletouch: calling hs->handler=%p\n", hs->handler);
+      DEBUG(">>>>> hs_handletouch: calling hs->handler=%p\n", hs->handler);
 
       return (hs->handler)(hs, (void *) NULL);
 
       bool result =  (hs->handler)(hs, (void *) NULL);
-      debug("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
+      DEBUG("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
             hs->handler, result ? "true" : "false");
       return result;
     }
