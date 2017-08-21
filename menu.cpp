@@ -198,7 +198,7 @@ void menuBackButton(void)
   
 static void menu_draw(struct Menu *menu)
 {
-  DEBUG2("menu_draw: drawing menu %p\n", menu);
+  DEBUG2("menu_draw: drawing menu %p, ->top=%d\n", menu, menu->top);
 
   // clear screen and write menu title on upper row
   tft.fillScreen(SCREEN_BG);
@@ -302,9 +302,10 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 {
   DEBUG2(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, is_menu=%s\n", is_menu ? "true" : "false");
   if (is_menu)
-    menu_dump("menu: ", menu);
+    menu_dump("menu_handletouch: menu=", menu);
   else
-    DEBUG2("menu: NULL\n");
+    DEBUG2("menu_handletouch: no menu!\n");
+  event_dump_queue("menu_handletouch: event queue");
   hs_dump("menu hotspots", hs, hslen);
 
   for (int i = 0; i < hslen; ++hs, ++i)
@@ -329,8 +330,10 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
           DEBUG2("menu_handletouch: calling new menu\n");
           struct MenuItem *mi = menu->items[i];
           DEBUG2("Checking mi %d: %s\n", i, mi_display(mi));
+          event_flush();
+          DEBUG2("After event_flush()\n");
           menu_show(mi->menu);
-          menu_draw(menu);    // redraw current menu
+//          menu_draw(menu);    // redraw current menu
           DEBUG2("<<<<<<<<<<<<<<<<<<<< menu_handletouch: menu, returning false\n");
           return false;
         }
@@ -338,13 +341,18 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
         // else call mi->action()
         DEBUG2("menu_handletouch: calling menuitem action routine: %p\n", mi->action);
         mi->action();
+        event_flush();
+        DEBUG2("After event_flush()\n");
         menu_draw(menu);    // redraw current menu
         DEBUG2("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
         return false;
       }
       else
       { // just call action HotSpot routine
+        event_flush();
+        DEBUG2("After event_flush()\n");
         DEBUG2("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
+        event_dump_queue("menu_handletouch: event queue before HotSpot handler:");
         return hs->handler(hs, (void *) menu);
       }
     }

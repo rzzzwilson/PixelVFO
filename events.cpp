@@ -61,6 +61,19 @@ const char *event2display(VFOEvent *event)
 
 void event_push(Event event, int x, int y)
 {
+  const char *event_name;
+  switch (event)
+  {
+    case event_None:
+      event_name =  "event_None";
+      break;
+    case event_Down:
+      event_name =  "event_None";
+      break;
+    default:
+      event_name =  "event_UNKNOWN";
+  }
+  DEBUG2("##### event_push: pushing event (%s, %d, %d)\n", event_name, x, y);
   // put new event into next empty slot
   event_queue[queue_fore].event = event;
   event_queue[queue_fore].x = x;
@@ -110,6 +123,7 @@ VFOEvent *event_pop(void)
 
   interrupts();
 
+  DEBUG2("##### event_pop: popping event %s\n", event2display(result));
   return result;
 }
 
