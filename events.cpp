@@ -88,8 +88,7 @@ void event_push(Event event, int x, int y)
   if (queue_aft == queue_fore)
   {
       event_dump_queue("ERROR: event queue full!");
-      debug("Event queue full\n");
-      abort("ERROR: event queue full!");
+      abort("ERROR: event queue full! alpha beta gamma delta epsilon zet eta theta 1 2 3 4 5");
   }
 }
 
@@ -145,6 +144,7 @@ int event_pending(void)
 
   interrupts();
 
+  DEBUG2("##### event_pending: returning %d\n", result);
   return result;
 }
 
@@ -160,6 +160,8 @@ void event_flush(void)
   queue_fore = 0;
   queue_aft = 0;
 
+  DEBUG2("##### event_flush: all gone!\n");
+
   interrupts();
 }
 
@@ -174,21 +176,21 @@ void event_dump_queue(const char *msg)
   // Must protect from RE code fiddling with queue
   noInterrupts();
 
-  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  debug("Queue: %s\n", msg);
+  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  DEBUG("Queue: %s\n", msg);
   for (int i = 0; i < EventQueueLength; ++i)
   {
     VFOEvent *event = &event_queue[i];
 
-    debug("  %d -> %s\n", i, event2display(event));
+    DEBUG("  %d -> %s\n", i, event2display(event));
   }
   if (event_pending() == 0)
-    debug("Queue length=0 (or %d)\n", EventQueueLength);
+    DEBUG("Queue length=0 (or %d)\n", EventQueueLength);
   else
-    debug("Queue length=%d\n", event_pending());
-  debug("queue_aft=%d", queue_aft);
-  debug(", queue_fore=%d\n", queue_fore);
-  debug("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    DEBUG("Queue length=%d\n", event_pending());
+  DEBUG("queue_aft=%d", queue_aft);
+  DEBUG(", queue_fore=%d\n", queue_fore);
+  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
   interrupts();
 }

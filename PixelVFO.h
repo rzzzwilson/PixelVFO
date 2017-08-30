@@ -12,6 +12,8 @@
 // macros to enable tailoring of debug calls
 #define DEBUG     debug_ignore
 #define DEBUG2    debug
+//#define DEBUG2    debug_ignore
+#define DEBUG3    debug
 
 // macro to get number of elements in an array
 #define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
@@ -34,6 +36,8 @@
 #define FREQ_BG             ILI9341_WHITE
 #define FREQ_SEL_BG         ILI9341_GREEN
 #define BOTTOM_BG           ILI9341_WHITE
+#define ABORT_FG            ILI9341_RED
+#define ABORT_BG            ILI9341_WHITE
 
 
 #define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
@@ -41,6 +45,7 @@
 #define FONT_BUTTON           (&FreeSansBold12pt7b) // font for button labels
 #define FONT_MENU             (&FreeSansBold18pt7b) // font for menuitems
 #define FONT_MENUITEM         (&FreeSansBold12pt7b) // font for menuitems
+#define FONT_ABORT            (&FreeSansBold12pt7b) // font for abort() screen
 
 extern Adafruit_ILI9341 tft;
 

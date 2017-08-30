@@ -108,7 +108,7 @@ uint16_t freq_char_x_offset[NUM_F_CHAR + 1];    // x offset for start/end of eac
 int freq_digit_select = -1;                     // index of selected digit in frequency display
 
 uint32_t msraw = 0x80000000;
-#define MIN_REPEAT_PERIOD   100
+#define MIN_REPEAT_PERIOD   250
 
 VFOState vfo_state = VFO_Standby;
 
@@ -184,15 +184,54 @@ void dumphex(const char *msg, void *base, int num)
 
 //-----------------------------------------------
 // Abort the application giving as much information about the
-// problem as possible.
+// problem as possible.  Try to use the TFT screen.
 //-----------------------------------------------
 
 void abort(const char *msg)
 {
-  // TODO: write message on the screen, with wrap-around
+  char *mptr = (char *) msg;
+  int  offset_y = 30;
+  
+  // first, send error message to console
   Serial.printf("*********************************************************\n");
-  Serial.printf("%s\n", msg);
+  Serial.printf("* %s\n", msg);
   Serial.printf("*********************************************************\n");
+
+  // write message to the TFT screen
+  tft.setFont(FONT_ABORT);
+  tft.fillRect(0, 0, tft.width(), tft.height(), ABORT_BG);
+  tft.setTextColor(ABORT_FG);
+  tft.setCursor(5, offset_y);
+
+  while (msg)
+  {
+    int16_t x1;
+    int16_t y1;
+    uint16_t w;
+    uint16_t h;
+
+    mptr = (char *) msg;
+    while (*mptr)
+    {
+      tft.getTextBounds(mptr, 0, 0, &x1, &y1, &w, &h);
+      if (w > tft.width())
+      {
+        char save;
+        save = *mptr;
+        *mptr = '\0';
+        tft.print(msg);
+        offset_y += 30;
+        tft.setCursor(5, offset_y);
+        *mptr = save;
+        msg = mptr;
+      }
+      ++mptr;
+    }
+    
+    tft.print(msg);
+  }
+
+  // wait here, forever
   while (1);
 }
 
@@ -200,6 +239,7 @@ void abort(const char *msg)
 // Interrupt - pen went down or up.
 //
 // Ignore quickly repeated interrupts and create an event_Down event.
+// Keeps reading while returned results not close to same values.
 //----------------------------------------
 
 void touch_irq(void)
@@ -216,8 +256,26 @@ void touch_irq(void)
   }
   msraw = now;
 
-  // read touch position, add DOWN event to event queue
-  ts_read(&last_x, &last_y);
+  // read touch position, wait until reads return similar positions
+//  DEBUG3("touch_irq: %d: reading\n", now);
+  noInterrupts();   // ignore interrupts from ts_read()
+  for (;;)
+  {
+    int old_x = last_x;
+    int old_y = last_y;
+    
+    ts_read(&last_x, &last_y);
+    
+    if (abs(last_x - old_x) < 10 && abs(last_y - old_y) < 10)
+      break;
+      
+    old_x = last_x;
+    old_y = last_y;
+  }
+  interrupts();
+  
+  // add DOWN event to event queue
+//  DEBUG3("touch_irq: pushing DOWN event\n");
   event_push(event_Down, last_x, last_y);
 }
 
