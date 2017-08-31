@@ -73,7 +73,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define MENUBTN_FG             ILI9341_BLUE
 
 #define CREDIT_FG              ILI9341_BLACK
-#define CREDIT_BG              ILI9341_BLUE
+#define CREDIT_BG              ILI9341_GREEN
 
 // ONLINE button definitions
 #define ONLINE_WIDTH        110
@@ -112,6 +112,38 @@ uint32_t msraw = 0x80000000;
 
 VFOState vfo_state = VFO_Standby;
 
+
+//-----------------------------------------------
+// Debug routine - Dump some memory in hex.
+//     format  the printf-style format string
+//     ...     the args to 'format'
+//
+// This routine does nothing.
+//-----------------------------------------------
+
+void dump_hex(const char *addr, int size)
+{
+  const char *x = addr;
+
+  DEBUG3("---------------------------------------------------------\n");
+  DEBUG3("dump_hex: %d bytes starting at %04x\n", size, addr);
+  for (int i = 0; i < size; ++i, ++x)
+  {
+    DEBUG3("%02x ", *x);
+  }
+  DEBUG3("\n");
+  
+  x = addr;
+  for (int i = 0; i < size; ++i, ++x)
+  {
+    if (*x)
+        DEBUG3(" %c ", *x);
+    else
+        DEBUG3("   ");
+  }
+  DEBUG3("\n");
+  DEBUG3("---------------------------------------------------------\n");
+}
 
 //-----------------------------------------------
 // Debug routine - IGNORE THE CALL
@@ -442,9 +474,9 @@ void credits_action(void)
   // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
-  tft.setCursor(5, TOP_BAR_Y);
   tft.setTextColor(CREDIT_FG);
   tft.setFont(FONT_MENU);
+  tft.setCursor(5, TOP_BAR_Y);
   tft.print("Credits");
   menuBackButton();
   tft.setFont(FONT_CREDIT);

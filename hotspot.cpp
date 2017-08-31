@@ -35,15 +35,15 @@ const char *hs_display(HotSpot *hs)
 
 void hs_dump(char const *msg, HotSpot *hs_array, int len)
 {
-  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  DEBUG("HotSpot array: %s\n", msg);
+  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  DEBUG3("HotSpot array: %s\n", msg);
   for (int i = 0; i < len; ++i)
   {
     HotSpot *hs = &hs_array[i];
 
-    DEBUG("  %d: %s\n", i, hs_display(hs));
+    DEBUG3("  %d: %s\n", i, hs_display(hs));
   }
-  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 //----------------------------------------

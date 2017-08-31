@@ -11,8 +11,8 @@
 
 // macros to enable tailoring of debug calls
 #define DEBUG     debug_ignore
-#define DEBUG2    debug
-//#define DEBUG2    debug_ignore
+//#define DEBUG2    debug
+#define DEBUG2    debug_ignore
 #define DEBUG3    debug
 
 // macro to get number of elements in an array
@@ -55,5 +55,6 @@ void abort(const char *msg);
 // the debug routines - writes to Serial output
 void debug(const char *format, ...);
 void debug_ignore(const char *format, ...);
+void dump_hex(const char *addr, int size);
 
 #endif
