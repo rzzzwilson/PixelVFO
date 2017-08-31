@@ -24,7 +24,7 @@ The displayed frequency will be changed by clicking on a frequency
 digit, which will present a keypad (digits 1->9, 0, #).  Clicking on
 a keypad digit will change the highlighted frequency digit and move to
 the next digit.  Changing the last digit in the frequency buffer will
-result in the highlight remaining on the last digit.  Pressing the '#'xi
+result in the highlight remaining on the last digit.  Pressing the '#'
 keypad digit will dismiss the keypad.  Selecting any digit in the
 frequency buffer will move the highlight to that digit.
 
