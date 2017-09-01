@@ -55,6 +55,9 @@ void abort(const char *msg);
 // the debug routines - writes to Serial output
 void debug(const char *format, ...);
 void debug_ignore(const char *format, ...);
-void dump_hex(const char *addr, int size);
+void dump_mem(const char *msg);
+#ifdef DEBUG_ON
+void dumphex(const char *msg, void *base, int num);
+#endif
 
 #endif

@@ -4,6 +4,9 @@
  * VK4FAWR - rzzzwilson@gmail.com
  ****************************************************/
 
+#include <malloc.h>
+#include <stdlib.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <SPI.h>
@@ -114,35 +117,25 @@ VFOState vfo_state = VFO_Standby;
 
 
 //-----------------------------------------------
-// Debug routine - Dump some memory in hex.
-//     format  the printf-style format string
-//     ...     the args to 'format'
-//
-// This routine does nothing.
+// Debug routine - Dump some memory usage information.
 //-----------------------------------------------
 
-void dump_hex(const char *addr, int size)
-{
-  const char *x = addr;
+extern "C" char *sbrk(int i);
 
-  DEBUG3("---------------------------------------------------------\n");
-  DEBUG3("dump_hex: %d bytes starting at %04x\n", size, addr);
-  for (int i = 0; i < size; ++i, ++x)
-  {
-    DEBUG3("%02x ", *x);
-  }
-  DEBUG3("\n");
+int32_t unallocated(void)
+{
+  char tos;
+  return &tos - (char*) sbrk(0);
+}
+
+void dump_mem(const char *msg)
+{
+  char *heapend = sbrk(0);
+  register char *stack_ptr asm ("sp");
+  int32_t freemem = unallocated();
   
-  x = addr;
-  for (int i = 0; i < size; ++i, ++x)
-  {
-    if (*x)
-        DEBUG3(" %c ", *x);
-    else
-        DEBUG3("   ");
-  }
-  DEBUG3("\n");
-  DEBUG3("---------------------------------------------------------\n");
+  Serial.printf("@@@@@ %s: heapend=%08x, stack_ptr=%08x, free=%d\n",
+                msg, heapend, stack_ptr, freemem);
 }
 
 //-----------------------------------------------
@@ -167,7 +160,7 @@ void debug_ignore(const char *format, ...)
 
 void debug(const char *format, ...)
 {
-  static char buff[512];
+  static char buff[256];
   va_list aptr;
 
   va_start(aptr, format);
@@ -177,6 +170,7 @@ void debug(const char *format, ...)
   Serial.printf(buff);
 }
 
+#ifdef DEBUG_ON
 //-----------------------------------------------
 // Helper for the dumphex() function.
 //     base  (void *) pointer to a byte in memory
@@ -185,11 +179,23 @@ void debug(const char *format, ...)
 
 void dumphex_helper(char *base, int num)
 {
+  char ascii[17];
+
+  memset(ascii, 0, sizeof(ascii));
+
+  Serial.printf("%08x  ", base);
+  
   for (int i = 0; i < 16; ++i)
   {
-    Serial.printf("%02x ", *(base + i));
+    char ch = *(base + i);
+    
+    Serial.printf(F("%02x "), ch);
+    if (isprint(ch))
+      *(ascii + i) = ch;
+    else
+      *(ascii + i) = '.';
   }
-  Serial.printf("\n");
+  Serial.printf(F("  %s\n"), ascii);
 }
 
 //-----------------------------------------------
@@ -203,16 +209,17 @@ void dumphex(const char *msg, void *base, int num)
 {
   char *off = (char *) base;
 
-  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", msg);
-  Serial.printf("HexDump: %s\n", msg);
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
+  Serial.printf(F("HexDump: %s\n"), msg);
   while (num > 0)
   {
     dumphex_helper(off, 16);
     num -= 16;
     off += 16;
   }
-  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n", msg);
+  Serial.printf(F("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"), msg);
 }
+#endif
 
 //-----------------------------------------------
 // Abort the application giving as much information about the
@@ -225,9 +232,9 @@ void abort(const char *msg)
   int  offset_y = 30;
   
   // first, send error message to console
-  Serial.printf("*********************************************************\n");
-  Serial.printf("* %s\n", msg);
-  Serial.printf("*********************************************************\n");
+  Serial.printf(F("*********************************************************\n"));
+  Serial.printf(F("* %s\n"), msg);
+  Serial.printf(F("*********************************************************\n"));
 
   // write message to the TFT screen
   tft.setFont(FONT_ABORT);
@@ -289,7 +296,6 @@ void touch_irq(void)
   msraw = now;
 
   // read touch position, wait until reads return similar positions
-//  DEBUG3("touch_irq: %d: reading\n", now);
   noInterrupts();   // ignore interrupts from ts_read()
   for (;;)
   {
@@ -307,7 +313,6 @@ void touch_irq(void)
   interrupts();
   
   // add DOWN event to event queue
-//  DEBUG3("touch_irq: pushing DOWN event\n");
   event_push(event_Down, last_x, last_y);
 }
 
@@ -415,7 +420,7 @@ void draw_thousands(void)
 
 void display_flash(void)
 {
-  Serial.printf("display_flash: called\n");
+  Serial.printf(F("display_flash: called\n"));
 }
 
 //-----------------------------------------------
@@ -532,10 +537,13 @@ struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
 struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
 struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
+#if 0
 struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
 struct MenuItem mi_credits3 = {"Credits3", NULL, &credits_action};
 struct MenuItem mi_credits4 = {"Credits4", NULL, &credits_action};
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2, &mi_credits3, &mi_credits4};
+#endif
+struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
 struct Menu menu_main = {"Menu", 0, ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
@@ -885,6 +893,8 @@ void setup(void)
 {
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
+
+  dump_mem("setup");
   
   // link the TS_IRQ pin to its interrupt handler
   attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);
@@ -939,16 +949,16 @@ void loop()
     switch (event->event)
     {
       case event_Down:
-        DEBUG("loop: Event %s\n", event2display(event));
-        hs_dump("main loop:", hs_mainscreen, ALEN(hs_mainscreen));
+//        DEBUG("loop: Event %s\n", event2display(event));
+//        hs_dump("main loop:", hs_mainscreen, ALEN(hs_mainscreen));
         if (hs_handletouch(event->x, event->y, hs_mainscreen, ALEN(hs_mainscreen)))
         {
-          DEBUG("loop: hs_handletouch() returned 'true', refreshing display\n");
+//          DEBUG("loop: hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
           freq_show();
-          DEBUG("loop: finished refreshing display\n");
+//          DEBUG("loop: finished refreshing display\n");
         }
-        DEBUG("loop: After event_Down in loop()\n");
+//        DEBUG("loop: After event_Down in loop()\n");
         break;
       case event_None:
         return;
