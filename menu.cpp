@@ -22,10 +22,10 @@ extern int ts_height;
 #define MAXMENUITEMROWS     5
 
 #define MENU_SCROLL_WIDTH   20
-#define SCROLL_FG           ILI9341_WHITE
-//#define SCROLL_BG           ILI9341_BLACK
-#define SCROLL_BG           ILI9341_RED
+#define MENU_SCROLL_OFFSET  0
 #define SCROLL_HEIGHT       20
+#define SCROLL_FG           ILI9341_WHITE
+#define SCROLL_BG           ILI9341_RED
 
 #define MENUBACK_WIDTH      80
 #define MENUBACK_HEIGHT     35
@@ -193,6 +193,8 @@ void menuBackButton(void)
 static void menu_draw(struct Menu *menu)
 {
   DEBUG3(">>>>>>>>>>>>>>>>>>>> menu_draw: entered\n");
+  DEBUG3("menu->num_items=%d, menu->top + MAXMENUITEMROWS=%d\n",
+         menu->num_items, menu->top + MAXMENUITEMROWS);
 
   // clear screen and write menu title on upper row
   tft.fillScreen(SCREEN_BG);
@@ -212,7 +214,9 @@ static void menu_draw(struct Menu *menu)
   int mi_y = DEPTH_FREQ_DISPLAY + MENUITEM_HEIGHT;
   for (int i = menu->top; i < menu->top + MAXMENUITEMROWS; ++i)
   {
-    if (i > menu->num_items)
+    DEBUG3("Top of loop, i=%d, top=%d, menu->num_items=%d\n", i, menu->top, menu->num_items);
+
+    if (i >= menu->num_items)
     {
       break;
     }
@@ -228,8 +232,8 @@ static void menu_draw(struct Menu *menu)
 
     // write indexed item on lower row, right-justified
     DEBUG3("fillRect(%d, %d, %d, %d, MENU_BG)\n",
-           0, mi_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT);
-    tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width, MENUITEM_HEIGHT, MENU_BG);
+           0, mi_y - MENUITEM_HEIGHT, ts_width-1, MENUITEM_HEIGHT);
+    tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width-1, MENUITEM_HEIGHT, MENU_BG);
     tft.setCursor(ts_width - w - 5, mi_y - 10);
     tft.print(menu->items[i]->title);
     mi_y += MENUITEM_HEIGHT;
@@ -255,15 +259,15 @@ static void menu_draw(struct Menu *menu)
   // draw the scroll widget if required
   if (menu->num_items > MAXMENUITEMROWS)
   {
-    tft.fillRect(0, DEPTH_FREQ_DISPLAY,
+    tft.fillRect(MENU_SCROLL_OFFSET, DEPTH_FREQ_DISPLAY,
                  MENU_SCROLL_WIDTH, ts_height - DEPTH_FREQ_DISPLAY, SCROLL_BG);
-    tft.fillTriangle(0, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
-                     MENU_SCROLL_WIDTH-1, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
-                     MENU_SCROLL_WIDTH/2, DEPTH_FREQ_DISPLAY,
+    tft.fillTriangle(MENU_SCROLL_OFFSET, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
+                     MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH-1, DEPTH_FREQ_DISPLAY+SCROLL_HEIGHT,
+                     MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH/2, DEPTH_FREQ_DISPLAY,
                      SCROLL_FG);
-    tft.fillTriangle(0, ts_height-1-SCROLL_HEIGHT,
-                     MENU_SCROLL_WIDTH-1, ts_height-1-SCROLL_HEIGHT,
-                     MENU_SCROLL_WIDTH/2, ts_height-1,
+    tft.fillTriangle(MENU_SCROLL_OFFSET, ts_height-1-SCROLL_HEIGHT,
+                     MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH-1, ts_height-1-SCROLL_HEIGHT,
+                     MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH/2, ts_height-1,
                      SCROLL_FG);
     DEBUG3("After draw scroll\n");
   }
