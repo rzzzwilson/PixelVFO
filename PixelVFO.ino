@@ -24,16 +24,16 @@
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
 
+#define USE_BIG_SCREEN  1
+
 // calibration data for raw touch data to screen coordinates transformation
-#if 1
+#if USE_BIG_SCREEN
 // 2.8" calibration
 #define TS_MINX     200
 #define TS_MINY     340
 #define TS_MAXX     3700
 #define TS_MAXY     3895
-#endif
-
-#if 0
+#else
 // 2.2" calibration
 #define TS_MINX     170
 #define TS_MINY     180
@@ -537,13 +537,14 @@ struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
 struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
 struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
-#if 0
+#if 1
 struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
 struct MenuItem mi_credits3 = {"Credits3", NULL, &credits_action};
 struct MenuItem mi_credits4 = {"Credits4", NULL, &credits_action};
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2, &mi_credits3, &mi_credits4};
-#endif
+#else
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
+#endif
 struct Menu menu_main = {"Menu", 0, ALEN(mia_main), mia_main};
 
 //////////////////////////////////////////////////////////////////////////////
