@@ -12,7 +12,8 @@ The interface for DigitalVFO is a 16x2 character display and an
 incremental rotary encoder.
 
 This project uses a 320x240 pixel TFT display with a touch screen to
-control the DDS-60 card.  This does away with the rotary encoder.
+control the DDS-60 card.  This does away with the rotary encoder.  The
+display is marked "TJCTM24028-SPI".
 
 The internal design notes are 
 `here <https://github.com/rzzzwilson/PixelVFO/blob/master/Design.rst>`_.
