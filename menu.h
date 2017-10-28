@@ -14,7 +14,7 @@
 
 
 // handler for selection of an item
-typedef void (*ItemAction)(void);
+typedef bool (*ItemAction)(void);
 
 // structure defining a menu item
 struct MenuItem

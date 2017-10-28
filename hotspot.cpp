@@ -35,15 +35,15 @@ const char *hs_display(HotSpot *hs)
 
 void hs_dump(char const *msg, HotSpot *hs_array, int len)
 {
-  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  DEBUG3("HotSpot array: %s\n", msg);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  Serial.printf("HotSpot array: %s\n", msg);
   for (int i = 0; i < len; ++i)
   {
     HotSpot *hs = &hs_array[i];
 
-    DEBUG3("  %d: %s\n", i, hs_display(hs));
+    Serial.printf("  %d: %s\n", i, hs_display(hs));
   }
-  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 //----------------------------------------

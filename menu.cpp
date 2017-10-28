@@ -59,13 +59,13 @@ bool hs_menuitem_handler(HotSpot *hs, void *mi)
 {
   MenuItem *mi_ptr = (MenuItem *) mi;
   
-  DEBUG3(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
-         hs_display(hs), mi_display(mi_ptr));
+  DEBUG(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
+        hs_display(hs), mi_display(mi_ptr));
   if (mi_ptr->menu)
     menu_show(mi_ptr->menu);
   else
     mi_ptr->action();
-  DEBUG3(">>>>> hs_menuitem_handler: returning false\n");
+  DEBUG("<<<<< hs_menuitem_handler: returning false\n");
   return false;
 }
 
@@ -158,16 +158,16 @@ const char *mi_display(struct MenuItem *mi)
 
 void menu_dump(char const *msg, Menu *menu)
 {
-  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  DEBUG3("Menu: %s\n", msg);
-  DEBUG3("  title=%s, top=%d, num items=%d\n", menu->title, menu->top, menu->num_items);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  Serial.printf("Menu: %s\n", msg);
+  Serial.printf("  title=%s, top=%d, num items=%d\n", menu->title, menu->top, menu->num_items);
 
   for (int i = 0; i < menu->num_items; ++i)
   {
     struct MenuItem *mi_ptr = menu->items[i];
-    DEBUG3("    mi %d: %s", i, mi_display(mi_ptr));
+    Serial.printf("    mi %d: %s", i, mi_display(mi_ptr));
   }
-  DEBUG3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 
@@ -192,9 +192,7 @@ void menuBackButton(void)
   
 static void menu_draw(struct Menu *menu)
 {
-  DEBUG3(">>>>>>>>>>>>>>>>>>>> menu_draw: entered\n");
-  DEBUG3("menu->num_items=%d, menu->top + MAXMENUITEMROWS=%d\n",
-         menu->num_items, menu->top + MAXMENUITEMROWS);
+  DEBUG(">>>>>>>>>>>>>>>>>>>> menu_draw: entered, menu title=%s\n", menu->title);
 
   // clear screen and write menu title on upper row
   tft.fillScreen(SCREEN_BG);
@@ -271,7 +269,7 @@ static void menu_draw(struct Menu *menu)
 #endif
   }
 
-  DEBUG3("<<<<<<<<<<<<<<<<<<<< menu_draw: exit\n");
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_draw: exit\n");
 }
 
 //----------------------------------------
@@ -291,8 +289,8 @@ static void menu_draw(struct Menu *menu)
 
 bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct Menu *menu)
 {
-  DEBUG3(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, is_menu=%s, hslen=%d, menu->top=%d\n",
-         is_menu ? "true" : "false", hslen, menu->top);
+  DEBUG(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, is_menu=%s, hslen=%d, menu->top=%d\n",
+        is_menu ? "true" : "false", hslen, menu->top);
 
   for (int i = 0; i < hslen; ++hs, ++i)
   {
@@ -307,34 +305,32 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
         if (mi->menu)
         {
-//          struct MenuItem *mi = menu->items[i];
           event_flush();
           menu_show(mi->menu);
-//          menu_draw(menu);    // redraw current menu
-          DEBUG3("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
           return false;
         }
         else
         {
           // else call mi->action()
-          mi->action();
+          bool result = mi->action();
           event_flush();
           menu_draw(menu);    // redraw current menu
-          DEBUG3("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
-          return false;
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
+          return result;
         }
       }
       else
       { // just call action HotSpot routine
         event_flush();
-        DEBUG3("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
-        event_dump_queue("menu_handletouch: event queue before HotSpot handler:");
+        DEBUG("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
+//        event_dump_queue("menu_handletouch: event queue before HotSpot handler:");
         return hs->handler(hs, (void *) menu);
       }
     }
   }
   
-  DEBUG3("<<<<<<<<<<<<<<<<<<<< menu_handletouch: end of items, returning 'false'\n");
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: end of items, returning 'false'\n");
   return false;
 }
 
@@ -345,8 +341,8 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
 void menu_show(struct Menu *menu)
 { 
-  dump_mem("menu_show");
- 
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: entered\n");
+
   // draw the menu page
   menu_draw(menu);
           
@@ -360,14 +356,18 @@ void menu_show(struct Menu *menu)
 
     switch (event->event)
     { 
-      case event_Down:       
+      case event_Down:
+        DEBUG("Checking menuitem touch\n");
         if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), true, menu))
         {
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: menuitem touch handled\n");
           return;
         }
         
+        DEBUG("Checking other touch\n");
         if (menu_handletouch(event->x, event->y, hs_other, ALEN(hs_other), false, menu))
         {
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: 'other' touch handled\n");
           return;
         }
         
@@ -379,4 +379,6 @@ void menu_show(struct Menu *menu)
         abort("Unrecognized event!?");
     }
   }
+  
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: leaving, UNRECOGNIZED?\n");
 }

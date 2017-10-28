@@ -33,6 +33,10 @@ The menu will be shown after pressing the 'Menu' button.
 Touchscreen interrupts
 ----------------------
 
+NOTE: Due to problems of reliability with the touchscreen interupt, the
+code will **not** use this interrupt.  We will poll for screen touches.
+So the interrupt and event code is not used.
+
 The VFO touchscreen is driven by an XPT2046 driver chip.  This chip is
 controlled via SPI and has these accessible lines:
 

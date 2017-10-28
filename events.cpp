@@ -61,7 +61,9 @@ const char *event2display(VFOEvent *event)
 
 void event_push(Event event, int x, int y)
 {
+#if 0
   const char *event_name;
+  
   switch (event)
   {
     case event_None:
@@ -73,7 +75,8 @@ void event_push(Event event, int x, int y)
     default:
       event_name =  "event_UNKNOWN";
   }
-  DEBUG2("##### event_push: pushing event (%s, %d, %d)\n", event_name, x, y);
+#endif
+
   // put new event into next empty slot
   event_queue[queue_fore].event = event;
   event_queue[queue_fore].x = x;
@@ -122,7 +125,6 @@ VFOEvent *event_pop(void)
 
   interrupts();
 
-  DEBUG2("##### event_pop: popping event %s\n", event2display(result));
   return result;
 }
 
@@ -144,7 +146,6 @@ int event_pending(void)
 
   interrupts();
 
-  DEBUG2("##### event_pending: returning %d\n", result);
   return result;
 }
 
@@ -160,8 +161,6 @@ void event_flush(void)
   queue_fore = 0;
   queue_aft = 0;
 
-  DEBUG2("##### event_flush: all gone!\n");
-
   interrupts();
 }
 
@@ -176,21 +175,21 @@ void event_dump_queue(const char *msg)
   // Must protect from RE code fiddling with queue
   noInterrupts();
 
-  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  DEBUG("Queue: %s\n", msg);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  Serial.printf("Queue: %s\n", msg);
   for (int i = 0; i < EventQueueLength; ++i)
   {
     VFOEvent *event = &event_queue[i];
 
-    DEBUG("  %d -> %s\n", i, event2display(event));
+    Serial.printf("  %d -> %s\n", i, event2display(event));
   }
   if (event_pending() == 0)
-    DEBUG("Queue length=0 (or %d)\n", EventQueueLength);
+    Serial.printf("Queue length=0 (or %d)\n", EventQueueLength);
   else
-    DEBUG("Queue length=%d\n", event_pending());
-  DEBUG("queue_aft=%d", queue_aft);
-  DEBUG(", queue_fore=%d\n", queue_fore);
-  DEBUG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    Serial.printf("Queue length=%d\n", event_pending());
+  Serial.printf("queue_aft=%d", queue_aft);
+  Serial.printf(", queue_fore=%d\n", queue_fore);
+  Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
   interrupts();
 }

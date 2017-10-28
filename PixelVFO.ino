@@ -18,7 +18,7 @@
 #include "menu.h"
 
 #define MAJOR_VERSION   "0"
-#define MINOR_VERSION   "3"
+#define MINOR_VERSION   "4"
 #define CALLSIGN        "vk4fawr"
 
 #define SCREEN_WIDTH    320
@@ -170,7 +170,7 @@ void debug(const char *format, ...)
   Serial.printf(buff);
 }
 
-#ifdef DEBUG_ON
+#ifdef DEBUGHEX
 //-----------------------------------------------
 // Helper for the dumphex() function.
 //     base  (void *) pointer to a byte in memory
@@ -425,41 +425,49 @@ void display_flash(void)
 
 //-----------------------------------------------
 // Menuitem action handlers
+// Return 'true' if screen must be redrawn.
 //-----------------------------------------------
 
-void reset_no_action(void)
+bool reset_no_action(void)
 {
   DEBUG("reset_no_action: called\n");
+  return true;
 }
 
-void reset_action(void)
+bool reset_action(void)
 {
   DEBUG("reset_action: called\n");
+  return true;
 }
 
-void brightness_action(void)
+bool brightness_action(void)
 {
   DEBUG("brightness_action: called\n");
+  return true;
 }
 
-void calibrate_action(void)
+bool calibrate_action(void)
 {
   DEBUG("calibrate_action: called\n");
+  return true;
 }
 
-void saveslot_action(void)
+bool saveslot_action(void)
 {
   DEBUG("saveslot_action: called\n");
+  return true;
 }
 
-void restoreslot_action(void)
+bool restoreslot_action(void)
 {
   DEBUG("restoreslot_action: called\n");
+  return true;
 }
 
-void deleteslot_action(void)
+bool deleteslot_action(void)
 {
   DEBUG("deleteslot_action: called\n");
+  return true;
 }
 
 bool hs_creditsback_handler(HotSpot *hs, void *ignore)
@@ -474,7 +482,7 @@ static HotSpot hs_credits[] =
 
 #define CreditsHSLen   ALEN(hs_credits)
 
-void credits_action(void)
+bool credits_action(void)
 {
   // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
@@ -505,7 +513,7 @@ void credits_action(void)
         if (hs_handletouch(event->x, event->y, hs_credits, CreditsHSLen))
         {
           DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
-          return;
+          return true;
         }
       default:
         break;
@@ -608,9 +616,9 @@ void undrawMenuButton(void)
 
 void draw_screen(void)
 {
+  DEBUG(">>>>>>>>>>>>> draw_screen: entered\n");
+  
   tft.setFont(FONT_FREQ);
-
-  // start drawing things that don't change
   tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   tft.setTextWrap(false);
   tft.fillRoundRect(0, 0, tft.width(), DEPTH_FREQ_DISPLAY, 5, FREQ_BG);
@@ -618,13 +626,14 @@ void draw_screen(void)
   tft.setCursor(MHZ_OFFSET_X, TOP_BAR_Y);
   tft.setTextColor(FREQ_FG);
   tft.print("Hz");
-
   drawOnline();
   drawMenuButton();
+  
+  DEBUG("<<<<<<<<<<<<< draw_screen: exit\n");
 }
 
 //-----------------------------------------------
-// Get touch information, if anyu.
+// Get touch information, if any.
 //     x, y  pointers to cells to receive X and Y position
 // Returns 'true' if touch found - X and Y cells updated.
 // Returns 'false' if no touch - X and Y cells NOT updated.
@@ -759,7 +768,6 @@ bool keypad_handler(HotSpot *hs, void *ignore)
 
 bool keypad_not_used(HotSpot *hs, void *ignore)
 {
-  DEBUG("keypad_not_used: called, arg=%d\n", hs->arg);
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
   return false;
 }
@@ -895,8 +903,6 @@ void setup(void)
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
 
-  dump_mem("setup");
-  
   // link the TS_IRQ pin to its interrupt handler
   attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);
   
@@ -950,16 +956,11 @@ void loop()
     switch (event->event)
     {
       case event_Down:
-//        DEBUG("loop: Event %s\n", event2display(event));
-//        hs_dump("main loop:", hs_mainscreen, ALEN(hs_mainscreen));
         if (hs_handletouch(event->x, event->y, hs_mainscreen, ALEN(hs_mainscreen)))
         {
-//          DEBUG("loop: hs_handletouch() returned 'true', refreshing display\n");
           draw_screen();
           freq_show();
-//          DEBUG("loop: finished refreshing display\n");
         }
-//        DEBUG("loop: After event_Down in loop()\n");
         break;
       case event_None:
         return;

@@ -10,10 +10,7 @@
 #include <Fonts/FreeSansBold24pt7b.h>
 
 // macros to enable tailoring of debug calls
-#define DEBUG     debug_ignore
-//#define DEBUG2    debug
-#define DEBUG2    debug_ignore
-#define DEBUG3    debug
+#define DEBUG     debug
 
 // macro to get number of elements in an array
 #define ALEN(a)    (sizeof(a)/sizeof((a)[0]))
@@ -56,7 +53,7 @@ void abort(const char *msg);
 void debug(const char *format, ...);
 void debug_ignore(const char *format, ...);
 void dump_mem(const char *msg);
-#ifdef DEBUG_ON
+#ifdef DEBUGHEX
 void dumphex(const char *msg, void *base, int num);
 #endif
 
