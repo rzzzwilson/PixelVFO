@@ -140,3 +140,17 @@ The menu system will have this structure::
               Reset all No
                         Yes
               Credits
+
+Menu Implementation
+-------------------
+
+There will be data structures called *Menu* and *MenuItem*.  A Menu
+will define one menu and will contain a title string and one or more
+MenuItem references.  The MenuItem structure will contain a display string
+and either a sub-menu reference or a reference to an action function,
+depending on whether clicking on the item draws another menu or performs
+some action, respectively.
+
+A menu will be drawn by calling *menu_show(struct Menu *menu)*.  This function
+returns no value - it is assumed that the screen showing previous to the
+call needs to be refreshed.
