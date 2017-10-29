@@ -8,6 +8,7 @@
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
+#include <Fonts/FreeSansBold9pt7b.h>
 
 // macros to enable tailoring of debug calls
 #define DEBUG     debug
@@ -35,6 +36,7 @@
 #define BOTTOM_BG           ILI9341_WHITE
 #define ABORT_FG            ILI9341_RED
 #define ABORT_BG            ILI9341_WHITE
+#define ILI9341_LIGHTGREY   0xC618      /* 192, 192, 192 */
 
 
 #define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
@@ -44,10 +46,14 @@
 #define FONT_MENUITEM         (&FreeSansBold12pt7b) // font for menuitems
 #define FONT_ABORT            (&FreeSansBold12pt7b) // font for abort() screen
 
+#define FONT_DIALOG           (&FreeSansBold9pt7b)  // font for dialog message text
+
 extern Adafruit_ILI9341 tft;
 
 // the abort() function exported from the top-level code
 void abort(const char *msg);
+
+bool pen_touch(int *, int *);
 
 // the debug routines - writes to Serial output
 void debug(const char *format, ...);

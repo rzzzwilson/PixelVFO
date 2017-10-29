@@ -13,16 +13,18 @@
 #include <Adafruit_ILI9341.h>
 #include <XPT2046_Touchscreen.h>
 #include "PixelVFO.h"
-#include "events.h"
 #include "hotspot.h"
 #include "menu.h"
+#include "utils.h"
 
 #define MAJOR_VERSION   "0"
-#define MINOR_VERSION   "4"
+#define MINOR_VERSION   "5"
 #define CALLSIGN        "vk4fawr"
 
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
+
+#define TOUCH_THRESHOLD 100
 
 #define USE_BIG_SCREEN  1
 
@@ -49,7 +51,7 @@
 //       loop() instead of interrupts.
 #define TS_CS       4
 #define TS_IRQ      3
-XPT2046_Touchscreen ts(TS_CS);
+XPT2046_Touchscreen ts(TS_CS, TS_IRQ);
 
 // The display also uses hardware SPI, plus #9 & #10
 #define TFT_RST     8
@@ -90,6 +92,9 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define ONLINE_FG           ILI9341_GREEN
 #define STANDBY_FG          ILI9341_BLACK
 
+
+// pen state
+static bool pen_down = false;  // pen up/down
 
 // the VFO states
 enum VFOState
@@ -274,48 +279,6 @@ void abort(const char *msg)
   while (1);
 }
 
-//----------------------------------------
-// Interrupt - pen went down or up.
-//
-// Ignore quickly repeated interrupts and create an event_Down event.
-// Keeps reading while returned results not close to same values.
-//----------------------------------------
-
-void touch_irq(void)
-{
-  uint32_t now = millis();
-  static int last_x;
-  static int last_y;
-
-  // ignore interrupt if too quick
-  if ((now - msraw) < MIN_REPEAT_PERIOD)
-  {
-    msraw = now;
-    return;
-  }
-  msraw = now;
-
-  // read touch position, wait until reads return similar positions
-  noInterrupts();   // ignore interrupts from ts_read()
-  for (;;)
-  {
-    int old_x = last_x;
-    int old_y = last_y;
-    
-    ts_read(&last_x, &last_y);
-    
-    if (abs(last_x - old_x) < 10 && abs(last_y - old_y) < 10)
-      break;
-      
-    old_x = last_x;
-    old_y = last_y;
-  }
-  interrupts();
-  
-  // add DOWN event to event queue
-  event_push(event_Down, last_x, last_y);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 // Code to handle the 'frequency' widget at screen top
 //////////////////////////////////////////////////////////////////////////////
@@ -431,7 +394,8 @@ void display_flash(void)
 bool reset_no_action(void)
 {
   DEBUG("reset_no_action: called\n");
-  return true;
+  util_confirm("Test of confirm.");
+  return false;
 }
 
 bool reset_action(void)
@@ -500,23 +464,19 @@ bool credits_action(void)
   tft.setCursor(180, 230);
   tft.printf("%s", CALLSIGN);
   
-  // handle all events in the queue
-  event_flush();
+  // event loop
   while (true)
   {
-    // get next event and handle it
-    VFOEvent *event = event_pop();
-
-    switch (event->event)
+    int x;    // pen touch coordinates
+    int y;
+  
+    if (pen_touch(&x, &y))
     {
-      case event_Down:
-        if (hs_handletouch(event->x, event->y, hs_credits, CreditsHSLen))
-        {
-          DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
-          return true;
-        }
-      default:
-        break;
+      if (hs_handletouch(x, y, hs_credits, CreditsHSLen))
+      {
+        DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
+        return true;
+      }
     }
   }
 }
@@ -568,21 +528,27 @@ void drawOnline(void)
 {
   if (vfo_state == VFO_Standby)
   {
+    util_button("Standby", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, STANDBY_BG2, STANDBY_BG, STANDBY_FG);
+#if 0
     tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, STANDBY_BG2);
     tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, STANDBY_BG);
     tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
     tft.setFont(FONT_BUTTON);
     tft.setTextColor(STANDBY_FG);
     tft.print("Standby");
+#endif
   }
   else
   {
+    util_button("ONLINE", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, ONLINE_BG2, ONLINE_BG  , ONLINE_FG);
+#if 0
     tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, ONLINE_BG2);
-    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, ONLINE_BG);
+    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, ONLINE_BG2);
     tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
     tft.setFont(FONT_BUTTON);
     tft.setTextColor(ONLINE_FG);
     tft.print("ONLINE");
+#endif
   }
 }
 
@@ -597,12 +563,7 @@ void undrawOnline(void)
 
 void drawMenuButton(void)
 {
-  tft.fillRoundRect(MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, BUTTON_RADIUS, MENUBTN_BG2);
-  tft.fillRoundRect(MENUBTN_X+1, MENUBTN_Y+1, MENUBTN_WIDTH-2, MENUBTN_HEIGHT-2, BUTTON_RADIUS, MENUBTN_BG);
-  tft.setCursor(MENUBTN_X + 22, SCREEN_HEIGHT - 10);
-  tft.setFont(FONT_BUTTON);
-  tft.setTextColor(MENUBTN_FG);
-  tft.print("Menu");
+  util_button("Menu", MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, MENUBTN_BG2, MENUBTN_BG, MENUBTN_BG2);
 }
 
 void undrawMenuButton(void)
@@ -616,8 +577,6 @@ void undrawMenuButton(void)
 
 void draw_screen(void)
 {
-  DEBUG(">>>>>>>>>>>>> draw_screen: entered\n");
-  
   tft.setFont(FONT_FREQ);
   tft.fillRect(0, DEPTH_FREQ_DISPLAY, tft.width(), SCREEN_HEIGHT-DEPTH_FREQ_DISPLAY, SCREEN_BG2);
   tft.setTextWrap(false);
@@ -628,36 +587,43 @@ void draw_screen(void)
   tft.print("Hz");
   drawOnline();
   drawMenuButton();
-  
-  DEBUG("<<<<<<<<<<<<< draw_screen: exit\n");
 }
 
 //-----------------------------------------------
-// Get touch information, if any.
+// Determine if screen was touched.
 //     x, y  pointers to cells to receive X and Y position
-// Returns 'true' if touch found - X and Y cells updated.
-// Returns 'false' if no touch - X and Y cells NOT updated.
+// Returns 'false' if no touch, 'x' and 'y' cells NOT updated.
+// Returns 'true' if new touch found, 'x' and 'y' cells updated.
+// Returns 'true' only if new touch, ie, pen was UP last read.
 //-----------------------------------------------
-bool ts_read(int *x, int *y)
+bool pen_touch(int *x, int *y)
 {
-  // See if there's any touch data for us
-  if (ts.bufferEmpty())
-  {
-    return false;
-  }
-
   // Retrieve a point  
   TS_Point p = ts.getPoint();
 
-  if (p.z < 100)
+  // if pen not DOWN, return false
+  if (p.z < TOUCH_THRESHOLD)
+  {
+    if (pen_down)
+//      DEBUG("pen_down going FALSE\n");
+    pen_down = false;
+    return false;
+  }
+
+  // pen is DOWN, if DOWN before, ignore
+  if (pen_down)
   {
     return false;
   }
 
+  // otherwise we have a pen touch
+  pen_down = true;
+  
   // Scale from ~0->4000 to tft.width using the calibration #'s
   *x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
   *y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
 
+  DEBUG("pen_down going TRUE, x=%d, y=%d\n", *x, *y);
   return true;
 }
 
@@ -876,20 +842,16 @@ void keypad_show(int offset)
   // event loop
   while (true)
   {
-    // get next event and handle it
-    VFOEvent *event = event_pop();
-
-    switch (event->event)
+    int x;    // pen touch coordinates
+    int y;
+  
+    if (pen_touch(&x, &y))
     {
-      case event_Down:
-        if (hs_handletouch(event->x, event->y, hs_keypad, KeypadHSLen))
-        {
-          //freq_show();
-          return;
-        }
-        break;
-      default:
-        break;
+      if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
+      {
+        //freq_show();
+        return;
+      }
     }
   }
 }
@@ -903,9 +865,6 @@ void setup(void)
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
 
-  // link the TS_IRQ pin to its interrupt handler
-  attachInterrupt(digitalPinToInterrupt(TS_IRQ), touch_irq, FALLING);
-  
   // set up the VFO frequency data structures
   frequency = 1000000L;
   freq_to_buff(freq_display, 1000000L);
@@ -923,7 +882,7 @@ void setup(void)
   
   tft.begin();
   tft.setRotation(1);
-    
+
   ts.begin();
   
   // draw the basic screen
@@ -947,25 +906,15 @@ void setup(void)
 //-----------------------------------------------
 void loop()
 {
-  // handle all events in the queue
-  while (true)
+  int x;      // pen touch coordinates
+  int y;
+  
+  if (pen_touch(&x, &y))
   {
-    // get next event and handle it
-    VFOEvent *event = event_pop();
-
-    switch (event->event)
+    if (hs_handletouch(x, y, hs_mainscreen, ALEN(hs_mainscreen)))
     {
-      case event_Down:
-        if (hs_handletouch(event->x, event->y, hs_mainscreen, ALEN(hs_mainscreen)))
-        {
-          draw_screen();
-          freq_show();
-        }
-        break;
-      case event_None:
-        return;
-      default:
-        abort("Unrecognized event!?");
+      draw_screen();
+      freq_show();
     }
   }
 }

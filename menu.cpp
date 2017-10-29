@@ -9,8 +9,8 @@
 #include <Arduino.h>
 #include "PixelVFO.h"
 #include "menu.h"
-#include "events.h"
 #include "hotspot.h"
+#include "utils.h"
 
 extern int ts_width;
 extern int ts_height;
@@ -36,6 +36,9 @@ extern int ts_height;
 #define MENUBACK_Y          ((DEPTH_FREQ_DISPLAY - MENUBACK_HEIGHT)/2)
 #define MENU_ITEM_BG        0x0700
 
+// function forward definitions
+const char *mi_display(struct MenuItem *mi);
+void menu_dump(char const *msg, Menu *menu);
 
 //----------------------------------------
 // Handler if user clicks on "Back" button.
@@ -65,7 +68,7 @@ bool hs_menuitem_handler(HotSpot *hs, void *mi)
     menu_show(mi_ptr->menu);
   else
     mi_ptr->action();
-  DEBUG("<<<<< hs_menuitem_handler: returning false\n");
+//  DEBUG("<<<<< hs_menuitem_handler: returning false\n");
   return false;
 }
 
@@ -176,13 +179,16 @@ void menu_dump(char const *msg, Menu *menu)
 //----------------------------------------
   
 void menuBackButton(void)
-{ 
+{
+  util_button("Back", MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT, MENUBACK_BG, MENUBACK_BG2, MENUBACK_FG);
+#if 0
   tft.fillRoundRect(MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT, BUTTON_RADIUS, MENUBACK_BG);
   tft.fillRoundRect(MENUBACK_X+1, MENUBACK_Y+1, MENUBACK_WIDTH-2, MENUBACK_HEIGHT-2, BUTTON_RADIUS, MENUBACK_BG2);
   tft.setFont(FONT_BUTTON);
   tft.setTextColor(MENUBACK_FG);
-  tft.setCursor(MENUBACK_X + 8, MENUBACK_Y + 25);
+  tft.setCursor(MENUBACK_X + 12, MENUBACK_Y + 25);
   tft.print("Back");
+#endif
 }
   
 //----------------------------------------
@@ -269,7 +275,7 @@ static void menu_draw(struct Menu *menu)
 #endif
   }
 
-  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_draw: exit\n");
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_draw: exit, menu title=%s\n", menu->title);
 }
 
 //----------------------------------------
@@ -289,8 +295,8 @@ static void menu_draw(struct Menu *menu)
 
 bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct Menu *menu)
 {
-  DEBUG(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, is_menu=%s, hslen=%d, menu->top=%d\n",
-        is_menu ? "true" : "false", hslen, menu->top);
+  DEBUG(">>>>>>>>>>>>>>>>>>>> menu_handletouch: entered, x=%d, y=%d, is_menu=%s, hslen=%d, menu->top=%d\n",
+        x, y, is_menu ? "true" : "false", hslen, menu->top);
 
   for (int i = 0; i < hslen; ++hs, ++i)
   {
@@ -305,26 +311,24 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
         if (mi->menu)
         {
-          event_flush();
+          DEBUG("menu_handletouch: calling menu_show('%s')\n", mi->menu->title);
           menu_show(mi->menu);
-          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
-          return false;
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: menu, returning 'true'\n");
+          return true;
         }
         else
         {
-          // else call mi->action()
-          bool result = mi->action();
-          event_flush();
-          menu_draw(menu);    // redraw current menu
-          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning false\n");
-          return result;
+          if (mi->action())
+          {
+            menu_draw(menu);    // if required, redraw current menu
+          }
+          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_handletouch: action, returning 'true'\n");
+          return true;
         }
       }
       else
       { // just call action HotSpot routine
-        event_flush();
         DEBUG("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
-//        event_dump_queue("menu_handletouch: event queue before HotSpot handler:");
         return hs->handler(hs, (void *) menu);
       }
     }
@@ -341,44 +345,34 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
 void menu_show(struct Menu *menu)
 { 
-  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: entered\n");
+  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: entered, menu->title=%s\n", menu->title);
 
   // draw the menu page
   menu_draw(menu);
           
-  // get rid of any stray events to this point
-  event_flush();
-
+  // event loop for handling menu
   while (true)
   { 
-    // get next event and handle it
-    VFOEvent *event = event_pop();
-
-    switch (event->event)
-    { 
-      case event_Down:
-        DEBUG("Checking menuitem touch\n");
-        if (menu_handletouch(event->x, event->y, hs_menu, ALEN(hs_menu), true, menu))
-        {
-          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: menuitem touch handled\n");
-          return;
-        }
-        
-        DEBUG("Checking other touch\n");
-        if (menu_handletouch(event->x, event->y, hs_other, ALEN(hs_other), false, menu))
-        {
-          DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: 'other' touch handled\n");
-          return;
-        }
-        
-        menu_draw(menu);
-        break;
-      case event_None:
-        break;
-      default:
-        abort("Unrecognized event!?");
+    int x;    // pen touch coordinates
+    int y;
+  
+    if (pen_touch(&x, &y))
+    {
+      DEBUG("menu_show: Checking menuitem touch\n");
+      if (menu_handletouch(x, y, hs_menu, ALEN(hs_menu), true, menu))
+      {
+        DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: menuitem touch handled, menu->title=%s\n", menu->title);
+        return;
+      }
+      
+      DEBUG("menu_show: Checking other touch\n");
+      if (menu_handletouch(x, y, hs_other, ALEN(hs_other), false, menu))
+      {
+        DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: 'other' touch handled, menu->title=%s\n", menu->title);
+        return;
+      }
+      
+      menu_draw(menu);
     }
   }
-  
-  DEBUG("<<<<<<<<<<<<<<<<<<<< menu_show: leaving, UNRECOGNIZED?\n");
 }

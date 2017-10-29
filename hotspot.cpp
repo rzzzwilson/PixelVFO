@@ -68,8 +68,8 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
       return (hs->handler)(hs, (void *) NULL);
 
       bool result =  (hs->handler)(hs, (void *) NULL);
-      DEBUG("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
-            hs->handler, result ? "true" : "false");
+//      DEBUG("<<<<< hs_handletouch: returned from hs->handler=%p, result=%s\n",
+//            hs->handler, result ? "true" : "false");
       return result;
     }
   }

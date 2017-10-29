@@ -8,7 +8,28 @@
 #include "utils.h"
 
 
-#define UTIL_BUTTON_RADIUS         5
+#define BUTTON_RADIUS   5
+#define CORNER_RADIUS   7
+
+// size/position of ALERT dialog
+#define ALERT_X         30
+#define ALERT_Y         20
+#define ALERT_W         260
+#define ALERT_H         200
+
+// sizes of dialog buttons
+#define OK_WIDTH        90
+#define OK_HEIGHT       35
+#define CANCEL_WIDTH    90
+#define CANCEL_HEIGHT   35
+
+#define DLG_BG          ILI9341_RED
+#define DLG_BG2         ILI9341_WHITE
+#define DLG_FG          ILI9341_BLACK
+
+#define BTN_BG          ILI9341_BLACK
+#define BTN_BG2         ILI9341_GREEN
+#define BTN_FG          ILI9341_BLACK
 
 //----------------------------------------
 // Draw a single button ALERT dialog box.
@@ -18,6 +39,20 @@
 
 static void draw_alert(const char *msg)
 {
+  // draw dialog body
+  tft.fillRoundRect(ALERT_X, ALERT_Y, ALERT_W, ALERT_H, CORNER_RADIUS, DLG_BG);
+  tft.fillRoundRect(ALERT_X+2, ALERT_Y+2, ALERT_W-4, ALERT_H-4, CORNER_RADIUS, DLG_BG2);
+
+  // draw text (centred)
+  tft.setCursor(ALERT_X + 7, ALERT_Y + 25);
+  tft.setFont(FONT_DIALOG);
+  tft.setTextColor(DLG_FG);
+  tft.print(msg);
+
+  // draw the "OK" button
+  util_button("Ok",
+              ALERT_X + ALERT_W - OK_WIDTH - 4, ALERT_Y + ALERT_H - OK_HEIGHT - 4,
+              OK_WIDTH, OK_HEIGHT, BTN_BG, BTN_BG2, BTN_FG);
 }
 
 //----------------------------------------
@@ -29,9 +64,10 @@ void util_alert(const char *msg)
 {
   DEBUG("alert: called, msg='%s'\n", msg);
 
-#if 0
   draw_alert(msg);  // draw the alert dialog
+  delay(10000);
 
+#if 0
   while (true)      // wait until the button is pressed
   {
     int x;          // pen touch coordinates
@@ -60,7 +96,9 @@ static void draw_confirm(const char *msg)
   draw_alert(msg);
 
   // add the CANCEL button
-
+  util_button("Cancel",
+              ALERT_X + 4, ALERT_Y + ALERT_H - CANCEL_HEIGHT - 4,
+              CANCEL_WIDTH, CANCEL_HEIGHT, BTN_BG, BTN_BG2, BTN_FG);
 }
 
 //----------------------------------------
@@ -73,14 +111,16 @@ bool util_confirm(const char *msg)
 {
   DEBUG("confirm: called, msg='%s'\n", msg);
   DEBUG("confirm: returning 'true', OK selected\n");
-  return true
+
+  draw_confirm(msg);  // draw the confirm dialog
+  delay(10000);
+  
+  return true;
 
 #if 0
-  draw_confirm();   // draw the confirm dialog
-
-  while (true)      // wait until one of two buttons pressed
+  while (true)        // wait until one of two buttons pressed
   {
-    int x;          // pen touch coordinates
+    int x;            // pen touch coordinates
     int y;
 
     if (pen_touch(&x, &y))
@@ -111,30 +151,22 @@ bool util_confirm(const char *msg)
 //----------------------------------------
 
 void util_button(const char *title, int x, int y, int w, int h,
-                 uint16_t bg1, uint16_t bg2)
+                 uint16_t bg1, uint16_t bg2, uint16_t fg)
 {
-  tft.fillRoundRect(x, y, w, h, UTIL_BUTTON_RADIUS, bg1);
-  tft.fillRoundRect(x+1, y+1, w-2, h-2, UTIL_BUTTON_RADIUS, bg2);
-  tft.setFont(FONT_BUTTON);
-  tft.setTextColor(bg1);
-  tft.setCursor(x + 8, y + 25);
-  tft.print(title);
-}
+  int16_t x1;   // used to get extent of title text
+  int16_t y1;
+  uint16_t w1;
+  uint16_t h1;
 
-//----------------------------------------
-// Draw a button with default colours.
-//     title  title text on button
-//     x, y   coordinates of top-left button corner
-//     w, h   width and height of button
-//----------------------------------------
-
-void util_button_std(const char *title, int x, int y, int w, int h)
-{
-  tft.fillRoundRect(x, y, w, h, UTIL_BUTTON_RADIUS, MENUBACK_BG);
-  tft.fillRoundRect(x+1, y+1, w-2, h-2, UTIL_BUTTON_RADIUS, MENUBACK_BG2);
+  // draw most of button
+  tft.fillRoundRect(x, y, w, h, BUTTON_RADIUS, bg1);
+  tft.fillRoundRect(x+1, y+1, w-2, h-2, BUTTON_RADIUS, bg2);
   tft.setFont(FONT_BUTTON);
-  tft.setTextColor(MENUBACK_FG);
-  tft.setCursor(x + 8, y + 25);
+  tft.setTextColor(fg);
+  
+  // figure out where to draw centred title
+  tft.getTextBounds((char *) title, 1, 1, &x1, &y1, &w1, &h1);
+  tft.setCursor(x + (w - w1)/2, y+25);
   tft.print(title);
 }
 
