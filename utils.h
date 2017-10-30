@@ -14,7 +14,7 @@ bool util_confirm(const char *msg);
 
 // standard button
 void util_button(const char *title, int x, int y, int w, int h,
-                                 uint16_t bg1, uint16_t bg2, uint16_t fg);
+                 uint16_t bg1, uint16_t bg2, uint16_t fg);
 
 
 #endif

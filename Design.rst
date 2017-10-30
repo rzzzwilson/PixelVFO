@@ -151,6 +151,37 @@ and either a sub-menu reference or a reference to an action function,
 depending on whether clicking on the item draws a sub-menu or performs
 some action, respectively.
 
-A menu will be drawn by calling *menu_show(struct Menu *menu)*.  This function
-returns no value - it is assumed that the screen showing previous to the
-call needs to be refreshed.
+    struct Menu
+    {
+        const char *title;          // title displayed on menu page
+        int top;                    // index of top displayed item
+        int num_items;              // number of items in the array below
+        struct MenuItem **items;    // array of pointers to MenuItem data
+    };
+    
+    struct MenuItem
+    {
+        const char *title;          // menu item display text
+        struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
+        ItemAction action;          // if not NULL, address of action function
+    };
+
+A menu will be drawn by calling *bool menu_show(struct Menu *menu)*.
+This function will draw the menu and menuitems and wait for a click on one of:
+
+* a displayed menuitem
+* an up/down widget
+* the BACK button
+
+Clicking on a displayed menuitem will call either menu_show() passing the
+sub-menu reference *or* will call the action handler.  The recursive call of
+menu_show() will always return **false** and the action handler will return
+either **true** or **false**.  The return value from menu_show() determines
+whether the current menu returns or is redrawn.
+
+Clicking on an up/down widget will scroll the menu up or down.  This is
+accomplished by adjusting the **top** value for the menu and redrawing it.
+
+Clicking on the back button calls the handler that returns **true**, thereby
+exiting the current (sub-)menu.
+

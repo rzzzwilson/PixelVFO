@@ -14,9 +14,9 @@
 
 
 // handler for selection of an item
-typedef bool (*ItemAction)(void);
+typedef void (*ItemAction)(void);
 
-// structure defining a menu item
+// structure defining a menuitem
 struct MenuItem
 {
   const char *title;          // menu item display text
@@ -24,11 +24,11 @@ struct MenuItem
   ItemAction action;          // if not NULL, address of action function
 };
 
-// A structure defining a menu
+// structure defining a menu
 struct Menu
 {
   const char *title;          // title displayed on menu page
-  int top;                    // number of items scrolled off the top
+  int top;                    // index of top displayed item
   int num_items;              // number of items in the array below
   struct MenuItem **items;    // array of pointers to MenuItem data
 };
@@ -36,8 +36,16 @@ struct Menu
 
 // menu functions
 //void menu_dump(const char *msg, struct Menu *menu);
-void menu_show(struct Menu *menu);
 //const char *mi_display(struct MenuItem *mi);
 void menuBackButton(void);
+
+//**************************************
+// Draw a menu on the screen.
+//     menu  address of the Menu structure to draw
+// Returns 'true' if the menu is finished or
+// 'false' if the menu is to be redrawn.
+//**************************************
+
+void menu_show(struct Menu *menu);
 
 #endif

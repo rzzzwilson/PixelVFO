@@ -160,7 +160,7 @@ void debug_ignore(const char *format, ...)
 //     format  the printf-style format string
 //     ...     the args to 'format'
 //
-// There is a limit of 512 bytes to the resutant string.
+// There is a limit of 512 bytes to the resultant string.
 //-----------------------------------------------
 
 void debug(const char *format, ...)
@@ -391,62 +391,55 @@ void display_flash(void)
 // Return 'true' if screen must be redrawn.
 //-----------------------------------------------
 
-bool reset_no_action(void)
+void reset_no_action(void)
 {
   DEBUG("reset_no_action: called\n");
-  util_confirm("Test of confirm.");
-  return false;
+  util_alert("Test of alert.");
 }
 
-bool reset_action(void)
+void reset_action(void)
 {
   DEBUG("reset_action: called\n");
-  return true;
 }
 
-bool brightness_action(void)
+void brightness_action(void)
 {
   DEBUG("brightness_action: called\n");
-  return true;
 }
 
-bool calibrate_action(void)
+void calibrate_action(void)
 {
   DEBUG("calibrate_action: called\n");
-  return true;
 }
 
-bool saveslot_action(void)
+void saveslot_action(void)
 {
   DEBUG("saveslot_action: called\n");
-  return true;
 }
 
-bool restoreslot_action(void)
+void restoreslot_action(void)
 {
   DEBUG("restoreslot_action: called\n");
-  return true;
 }
 
-bool deleteslot_action(void)
+void deleteslot_action(void)
 {
   DEBUG("deleteslot_action: called\n");
-  return true;
 }
 
-bool hs_creditsback_handler(HotSpot *hs, void *ignore)
+void hs_creditsback_handler(HotSpot *hs, void *ignore)
 {
-  return true;
+  DEBUG("hs_creditsback_handler: called\n");
 }
 
 static HotSpot hs_credits[] =
 {
-  {0, 0,                                    ts_width, DEPTH_FREQ_DISPLAY, hs_creditsback_handler, 0},
+  {0, 0, ts_width, DEPTH_FREQ_DISPLAY, hs_creditsback_handler, 0},
 };
 
 #define CreditsHSLen   ALEN(hs_credits)
 
-bool credits_action(void)
+void credits_action(void)
 {
   // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
@@ -475,7 +468,7 @@ bool credits_action(void)
       if (hs_handletouch(x, y, hs_credits, CreditsHSLen))
       {
         DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
-        return true;
+        return;
       }
     }
   }
@@ -528,27 +521,13 @@ void drawOnline(void)
 {
   if (vfo_state == VFO_Standby)
   {
-    util_button("Standby", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, STANDBY_BG2, STANDBY_BG, STANDBY_FG);
-#if 0
-    tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, STANDBY_BG2);
-    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, STANDBY_BG);
-    tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
-    tft.setFont(FONT_BUTTON);
-    tft.setTextColor(STANDBY_FG);
-    tft.print("Standby");
-#endif
+    util_button("Standby", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT,
+                STANDBY_BG2, STANDBY_BG, STANDBY_FG);
   }
   else
   {
-    util_button("ONLINE", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, ONLINE_BG2, ONLINE_BG  , ONLINE_FG);
-#if 0
-    tft.fillRoundRect(ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, BUTTON_RADIUS, ONLINE_BG2);
-    tft.fillRoundRect(ONLINE_X+1, ONLINE_Y+1, ONLINE_WIDTH-2, ONLINE_HEIGHT-2, BUTTON_RADIUS, ONLINE_BG2);
-    tft.setCursor(ONLINE_X + 7, SCREEN_HEIGHT - 10);
-    tft.setFont(FONT_BUTTON);
-    tft.setTextColor(ONLINE_FG);
-    tft.print("ONLINE");
-#endif
+    util_button("ONLINE", ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT,
+                ONLINE_BG2, ONLINE_BG, ONLINE_FG);
   }
 }
 
@@ -563,7 +542,8 @@ void undrawOnline(void)
 
 void drawMenuButton(void)
 {
-  util_button("Menu", MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, MENUBTN_BG2, MENUBTN_BG, MENUBTN_BG2);
+  util_button("Menu", MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT,
+              MENUBTN_BG2, MENUBTN_BG, MENUBTN_BG2);
 }
 
 void undrawMenuButton(void)
@@ -605,8 +585,7 @@ bool pen_touch(int *x, int *y)
   if (p.z < TOUCH_THRESHOLD)
   {
     if (pen_down)
-//      DEBUG("pen_down going FALSE\n");
-    pen_down = false;
+      pen_down = false;
     return false;
   }
 
@@ -649,21 +628,19 @@ HotSpot hs_mainscreen[] =
 // Screen hotspot handlers.
 //-----------------------------------------------
 
-bool freq_hs_handler(HotSpot *hs_ptr, void *ignore)
+void freq_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   freq_digit_select = hs_ptr->arg;
   keypad_show(hs_ptr->arg);
-  return true;
 }
 
 //-----------------------------------------------
 // Handle pressing the 'ONLINE/Standby' button.
 //     hs_ptr  a pointer to the actioned HotSpot item
 //     ignore  ignored
-// Returns 'false' as no screen redraw required.
 //-----------------------------------------------
 
-bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
+void online_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   // toggle state and redraw the button
   if (vfo_state == VFO_Standby)
@@ -678,21 +655,17 @@ bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
   }
     
   drawOnline();   // redraws button with appropriate text
-
-  return false;
 }
 
 //-----------------------------------------------
 // Action routine called when the "Menu" button is pressed.
 //     hs_ptr  a pointer to the HotSpot item actioned
 //     ignore  not used
-// Returns 'true' as we will need to redraw the screen.
 //-----------------------------------------------
 
-bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
+void menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   menu_show(&menu_main);
-  return true;
 }
 
 //-----------------------------------------------
@@ -719,7 +692,7 @@ char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 // Update the frequency display.
 //-----------------------------------------------
 
-bool keypad_handler(HotSpot *hs, void *ignore)
+void keypad_handler(HotSpot *hs, void *ignore)
 {
   int arg = hs->arg;
 
@@ -728,27 +701,22 @@ bool keypad_handler(HotSpot *hs, void *ignore)
   if (freq_digit_select >= NUM_F_CHAR)
     freq_digit_select = NUM_F_CHAR - 1;
   freq_show(freq_digit_select);
-
-  return false;
 }
 
-bool keypad_not_used(HotSpot *hs, void *ignore)
+void keypad_not_used(HotSpot *hs, void *ignore)
 {
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
-  return false;
 }
 
-bool keypad_close_handler(HotSpot *hs, void *ignore)
+void keypad_close_handler(HotSpot *hs, void *ignore)
 {
-  return true;
+  DEBUG("keypad_close_handler: called\n");
 }
 
-bool keypad_freq_handler(HotSpot *hs, void *ignore)
+void keypad_freq_handler(HotSpot *hs, void *ignore)
 {
   freq_digit_select = hs->arg;
   freq_show(freq_digit_select);
-  
-  return false;
 }
 
 // main screen HotSpot definitions
@@ -849,7 +817,6 @@ void keypad_show(int offset)
     {
       if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
       {
-        //freq_show();
         return;
       }
     }

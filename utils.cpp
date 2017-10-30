@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 #include "PixelVFO.h"
+#include "hotspot.h"
 #include "utils.h"
 
 
@@ -30,6 +31,65 @@
 #define BTN_BG          ILI9341_BLACK
 #define BTN_BG2         ILI9341_GREEN
 #define BTN_FG          ILI9341_BLACK
+
+
+//----------------------------------------
+// Draw a generic button.
+//     title     title text on button
+//     x, y      coordinates of top-left button corner
+//     w, h      width and height of button
+//     bg1, bg2  background colours
+//----------------------------------------
+
+void util_button(const char *title, int x, int y, int w, int h,
+                 uint16_t bg1, uint16_t bg2, uint16_t fg)
+{
+  int16_t x1;   // used to get extent of title text
+  int16_t y1;
+  uint16_t w1;
+  uint16_t h1;
+
+  // draw button background
+  tft.fillRoundRect(x, y, w, h, BUTTON_RADIUS, bg1);
+  tft.fillRoundRect(x+1, y+1, w-2, h-2, BUTTON_RADIUS, bg2);
+  tft.setFont(FONT_BUTTON);
+  tft.setTextColor(fg);
+  
+  // figure out where to draw centred title
+  tft.getTextBounds((char *) title, 1, 1, &x1, &y1, &w1, &h1);
+  tft.setCursor(x + (w - w1)/2, y+25);
+  tft.print(title);
+}
+
+//----------------------------------------
+// Handle clicks on the OK and CANCEL dialog buttons
+//----------------------------------------
+
+static void dlg_ok_handler(HotSpot *hs_ptr, void *ignore)
+{
+  DEBUG("dlg_ok_handler: called\n");
+}
+
+static void dlg_cancel_handler(HotSpot *hs_ptr, void *ignore)
+{
+  DEBUG("dlg_cancel_handler: called\n");
+}
+
+//----------------------------------------
+// Define hotspots for the ALERT and CONFIRM dialogs
+//----------------------------------------
+
+static HotSpot hs_dlg_ok[] =
+{
+  {ALERT_X + ALERT_W - OK_WIDTH - 4, ALERT_Y + ALERT_H - OK_HEIGHT - 4,
+   OK_WIDTH, OK_HEIGHT, dlg_ok_handler, 0}
+};
+
+static HotSpot hs_dlg_cancel[] =
+{
+  {ALERT_X + 4, ALERT_Y + ALERT_H - CANCEL_HEIGHT - 4,
+   CANCEL_WIDTH, CANCEL_HEIGHT, dlg_cancel_handler, 0}
+};
 
 //----------------------------------------
 // Draw a single button ALERT dialog box.
@@ -65,24 +125,21 @@ void util_alert(const char *msg)
   DEBUG("alert: called, msg='%s'\n", msg);
 
   draw_alert(msg);  // draw the alert dialog
-  delay(10000);
 
-#if 0
-  while (true)      // wait until the button is pressed
+  while (true)      // wait until the OK button is pressed
   {
     int x;          // pen touch coordinates
     int y;
 
     if (pen_touch(&x, &y))
     {
-      if (hs_handletouch(x, y, hs_alert_ok, ALEN(hs_alert_ok)))
+      if (hs_handletouch(x, y, hs_dlg_ok, ALEN(hs_dlg_ok)))
       {
         DEBUG("alert: returning, OK selected\n");
         return;
       }
     }
   }
-#endif
 }
 
 //----------------------------------------
@@ -113,60 +170,27 @@ bool util_confirm(const char *msg)
   DEBUG("confirm: returning 'true', OK selected\n");
 
   draw_confirm(msg);  // draw the confirm dialog
-  delay(10000);
-  
-  return true;
 
-#if 0
   while (true)        // wait until one of two buttons pressed
   {
     int x;            // pen touch coordinates
     int y;
 
     if (pen_touch(&x, &y))
-    switch (event->event)
     {
-      if (hs_handletouch(x, y, hs_confirm_ok, ALEN(confirm_ok)))
+      if (hs_handletouch(x, y, hs_dlg_ok, ALEN(hs_dlg_ok)))
       {
-        DEBUG("confirm: returning 'true', OK selected\n");
+        DEBUG("alert: returning, OK selected\n");
         return true;
       }
 
-      if (hs_handletouch(x, y, hs_confirm_cancel, ALEN(confirm_cancel)))
+      if (hs_handletouch(x, y, hs_dlg_cancel, ALEN(hs_dlg_cancel)))
       {
-        DEBUG("confirm: returning 'false', CANCEL selected\n");
+        DEBUG("alert: returning, CANCEL selected\n");
         return false;
       }
     }
   }
-#endif
 }
 
-//----------------------------------------
-// Draw a generic button.
-//     title     title text on button
-//     x, y      coordinates of top-left button corner
-//     w, h      width and height of button
-//     bg1, bg2  background colours
-//----------------------------------------
-
-void util_button(const char *title, int x, int y, int w, int h,
-                 uint16_t bg1, uint16_t bg2, uint16_t fg)
-{
-  int16_t x1;   // used to get extent of title text
-  int16_t y1;
-  uint16_t w1;
-  uint16_t h1;
-
-  // draw most of button
-  tft.fillRoundRect(x, y, w, h, BUTTON_RADIUS, bg1);
-  tft.fillRoundRect(x+1, y+1, w-2, h-2, BUTTON_RADIUS, bg2);
-  tft.setFont(FONT_BUTTON);
-  tft.setTextColor(fg);
-  
-  // figure out where to draw centred title
-  tft.getTextBounds((char *) title, 1, 1, &x1, &y1, &w1, &h1);
-  tft.setCursor(x + (w - w1)/2, y+25);
-  tft.print(title);
-}
 

@@ -52,8 +52,7 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 //     touch_y  Y coord of screen touch
 //     hs       base address of array of HotSpots
 //     hs_len   length of 'hs_array'
-// Returns the result of the handler, if called.  Handlers will return
-// 'true' if the screen needs a refresh, 'false' if no redraw required.
+// Returns 'true' if a handler was called, else 'false'.
 //----------------------------------------
 
 bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
@@ -64,15 +63,12 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
       DEBUG("hs_handletouch: calling hs->handler=%p\n", hs->handler);
-
-      return (hs->handler)(hs, (void *) NULL);
-
-      bool result =  (hs->handler)(hs, (void *) NULL);
-//      DEBUG("hs_handletouch: returned from hs->handler=%p, result=%s\n",
-//            hs->handler, result ? "true" : "false");
-      return result;
+      (hs->handler)(hs, (void *) NULL);
+      DEBUG("hs_handletouch: returned from hs->handler=%p, result='true'\n");
+      return true;
     }
   }
 
+  DEBUG("hs_handletouch: no hotspot found, returning 'false'\n");
   return false;
 }
