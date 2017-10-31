@@ -47,9 +47,10 @@ void menu_dump(char const *msg, Menu *menu);
 // Just returns 'true' - a signal that we should return from the menu.
 //----------------------------------------
 
-void hs_menuback_handler(HotSpot *hs, void *ignore)
+bool hs_menuback_handler(HotSpot *hs, void *ignore)
 {
   DEBUG("hs_menuback_handler: called\n");
+  return true;    // redraw screen
 }
 
 //----------------------------------------
@@ -58,17 +59,26 @@ void hs_menuback_handler(HotSpot *hs, void *ignore)
 //     mi   address of MenuItem to action
 //----------------------------------------
 
-void hs_menuitem_handler(HotSpot *hs, void *mi)
+bool hs_menuitem_handler(HotSpot *hs, void *mi)
 {
   MenuItem *mi_ptr = (MenuItem *) mi;
+  bool result = false;
   
   DEBUG(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
         hs_display(hs), mi_display(mi_ptr));
   if (mi_ptr->menu)
+  {
     menu_show(mi_ptr->menu);
+    result = true;
+  }
   else
+  {
     mi_ptr->action();
-  DEBUG("<<<<< hs_menuitem_handler: returning\n");
+    result = false;
+  }
+  DEBUG("<<<<< hs_menuitem_handler: returning '%s'\n",
+        (result) ? "true" : "false");
+  return result;
 }
 
 //----------------------------------------
@@ -77,7 +87,7 @@ void hs_menuitem_handler(HotSpot *hs, void *mi)
 //     mptr  address of Menu
 //----------------------------------------
 
-void menu_scroll_up(HotSpot *hs, void *mptr)
+bool menu_scroll_up(HotSpot *hs, void *mptr)
 {
   Menu *menu = (Menu *) mptr;
   int arg = hs->arg;
@@ -88,6 +98,8 @@ void menu_scroll_up(HotSpot *hs, void *mptr)
   menu->top -= arg;
   if (menu->top < 0)
       menu->top = 0;
+
+  return true;    // redraw screen
 }
 
 //----------------------------------------
@@ -96,7 +108,7 @@ void menu_scroll_up(HotSpot *hs, void *mptr)
 //     mi   address of MenuItem to action
 //----------------------------------------
 
-void menu_scroll_down(HotSpot *hs, void *mptr)
+bool menu_scroll_down(HotSpot *hs, void *mptr)
 {
   Menu *menu = (Menu *) mptr;
   int arg = hs->arg;
@@ -107,6 +119,8 @@ void menu_scroll_down(HotSpot *hs, void *mptr)
   menu->top += arg;
   if (menu->top > menu->num_items - MAXMENUITEMROWS)
       menu->top = menu->num_items - MAXMENUITEMROWS;
+
+  return true;    // redraw screen
 }
 
 // Define the Hotspots the menu uses

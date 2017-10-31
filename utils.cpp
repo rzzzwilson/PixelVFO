@@ -65,14 +65,16 @@ void util_button(const char *title, int x, int y, int w, int h,
 // Handle clicks on the OK and CANCEL dialog buttons
 //----------------------------------------
 
-static void dlg_ok_handler(HotSpot *hs_ptr, void *ignore)
+static bool dlg_ok_handler(HotSpot *hs_ptr, void *ignore)
 {
   DEBUG("dlg_ok_handler: called\n");
+  return true;    // redraw screen
 }
 
-static void dlg_cancel_handler(HotSpot *hs_ptr, void *ignore)
+static bool dlg_cancel_handler(HotSpot *hs_ptr, void *ignore)
 {
   DEBUG("dlg_cancel_handler: called\n");
+  return true;    // redraw screen
 }
 
 //----------------------------------------

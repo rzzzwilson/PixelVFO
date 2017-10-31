@@ -52,7 +52,7 @@ void hs_dump(char const *msg, HotSpot *hs_array, int len)
 //     touch_y  Y coord of screen touch
 //     hs       base address of array of HotSpots
 //     hs_len   length of 'hs_array'
-// Returns 'true' if a handler was called, else 'false'.
+// Returns the boolean value returned by the hotspot handler.
 //----------------------------------------
 
 bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
@@ -62,10 +62,10 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      DEBUG("hs_handletouch: calling hs->handler=%p\n", hs->handler);
-      (hs->handler)(hs, (void *) NULL);
-      DEBUG("hs_handletouch: returned from hs->handler=%p, result='true'\n");
-      return true;
+      bool result = (hs->handler)(hs, (void *) NULL);
+      DEBUG("hs_handletouch: called hs->handler=%p, result='%s'\n",
+            hs->handler, (result) ? "true" : "false");
+      return result;
     }
   }
 

@@ -18,7 +18,7 @@
 #include "utils.h"
 
 #define MAJOR_VERSION   "0"
-#define MINOR_VERSION   "5"
+#define MINOR_VERSION   "6"
 #define CALLSIGN        "vk4fawr"
 
 #define SCREEN_WIDTH    320
@@ -391,45 +391,55 @@ void display_flash(void)
 // Return 'true' if screen must be redrawn.
 //-----------------------------------------------
 
-void reset_no_action(void)
+bool reset_no_action(void)
 {
   DEBUG("reset_no_action: called\n");
   util_alert("Test of alert.");
+  return true;    // redraw screen
 }
 
-void reset_action(void)
+bool reset_action(void)
 {
   DEBUG("reset_action: called\n");
+  bool result = util_confirm("Test of confirm.");
+  DEBUG("confirm dialog returnd '%s'\n", (result) ? "true" : "false");
+  return false;   // don't redraw screen
 }
 
-void brightness_action(void)
+bool brightness_action(void)
 {
   DEBUG("brightness_action: called\n");
+  return false;   // don't redraw screen
 }
 
-void calibrate_action(void)
+bool calibrate_action(void)
 {
   DEBUG("calibrate_action: called\n");
+  return false;   // don't redraw screen
 }
 
-void saveslot_action(void)
+bool saveslot_action(void)
 {
   DEBUG("saveslot_action: called\n");
+  return false;   // don't redraw screen
 }
 
-void restoreslot_action(void)
+bool restoreslot_action(void)
 {
   DEBUG("restoreslot_action: called\n");
+  return false;   // don't redraw screen
 }
 
-void deleteslot_action(void)
+bool deleteslot_action(void)
 {
   DEBUG("deleteslot_action: called\n");
+  return false;   // don't redraw screen
 }
 
-void hs_creditsback_handler(HotSpot *hs, void *ignore)
+bool hs_creditsback_handler(HotSpot *hs, void *ignore)
 {
   DEBUG("hs_creditsback_handler: called\n");
+  return true;    // redraw screen
 }
 
 static HotSpot hs_credits[] =
@@ -439,7 +449,7 @@ static HotSpot hs_credits[] =
 
 #define CreditsHSLen   ALEN(hs_credits)
 
-void credits_action(void)
+bool credits_action(void)
 {
   // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
@@ -467,8 +477,8 @@ void credits_action(void)
     {
       if (hs_handletouch(x, y, hs_credits, CreditsHSLen))
       {
-        DEBUG("credits_action: hs_handletouch() returned 'true', exiting\n");
-        return;
+        DEBUG("credits_action: hs_handletouch() returned 'true', returning 'true'\n");
+        return true;
       }
     }
   }
@@ -624,14 +634,22 @@ HotSpot hs_mainscreen[] =
   {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, 0},
 };
 
-//-----------------------------------------------
+//***********************************************
 // Screen hotspot handlers.
+// Return 'true' if screen is to be redrawn.
+//***********************************************
+
+//-----------------------------------------------
+// Handle pressing a displayed frequency digit.
+//     hs_ptr  a pointer to the actioned HotSpot item
+//     ignore  ignored
 //-----------------------------------------------
 
-void freq_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool freq_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   freq_digit_select = hs_ptr->arg;
   keypad_show(hs_ptr->arg);
+  return true;    // redraw the screen
 }
 
 //-----------------------------------------------
@@ -640,7 +658,7 @@ void freq_hs_handler(HotSpot *hs_ptr, void *ignore)
 //     ignore  ignored
 //-----------------------------------------------
 
-void online_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   // toggle state and redraw the button
   if (vfo_state == VFO_Standby)
@@ -655,6 +673,7 @@ void online_hs_handler(HotSpot *hs_ptr, void *ignore)
   }
     
   drawOnline();   // redraws button with appropriate text
+  return false;   // don't redraw screen
 }
 
 //-----------------------------------------------
@@ -663,9 +682,10 @@ void online_hs_handler(HotSpot *hs_ptr, void *ignore)
 //     ignore  not used
 //-----------------------------------------------
 
-void menu_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
 {
   menu_show(&menu_main);
+  return true;
 }
 
 //-----------------------------------------------
@@ -692,7 +712,7 @@ char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 // Update the frequency display.
 //-----------------------------------------------
 
-void keypad_handler(HotSpot *hs, void *ignore)
+bool keypad_handler(HotSpot *hs, void *ignore)
 {
   int arg = hs->arg;
 
@@ -701,22 +721,26 @@ void keypad_handler(HotSpot *hs, void *ignore)
   if (freq_digit_select >= NUM_F_CHAR)
     freq_digit_select = NUM_F_CHAR - 1;
   freq_show(freq_digit_select);
+  return false;   // don't redraw scren
 }
 
-void keypad_not_used(HotSpot *hs, void *ignore)
+bool keypad_not_used(HotSpot *hs, void *ignore)
 {
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
+  return true;    // to keep compiler happy, abort() doesn't return
 }
 
-void keypad_close_handler(HotSpot *hs, void *ignore)
+bool keypad_close_handler(HotSpot *hs, void *ignore)
 {
   DEBUG("keypad_close_handler: called\n");
+  return true;    // redraw screen
 }
 
-void keypad_freq_handler(HotSpot *hs, void *ignore)
+bool keypad_freq_handler(HotSpot *hs, void *ignore)
 {
   freq_digit_select = hs->arg;
   freq_show(freq_digit_select);
+  return false;   // don't redraw screen
 }
 
 // main screen HotSpot definitions
