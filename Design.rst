@@ -174,10 +174,10 @@ This function will draw the menu and menuitems and wait for a click on one of:
 * the BACK button
 
 Clicking on a displayed menuitem will call either menu_show() passing the
-sub-menu reference *or* will call the action handler.  The recursive call of
-menu_show() will always return **false** and the action handler will return
-either **true** or **false**.  The return value from menu_show() determines
-whether the current menu returns or is redrawn.
+sub-menu reference *or* will call the action handler.  menu_show() will return
+the boolean value returned by the sub-call to menu_show() or the action handler.
+The return value from menu_show() determines whether the current menu returns
+or is redrawn.
 
 Clicking on an up/down widget will scroll the menu up or down.  This is
 accomplished by adjusting the **top** value for the menu and redrawing it.
