@@ -27,7 +27,7 @@ struct MenuItem
 // structure defining a menu
 struct Menu
 {
-  const char *title;          // title displayed on menu page
+  const char *title;          // title displayed on menu screen
   int top;                    // index of top displayed item
   int num_items;              // number of items in the array below
   struct MenuItem **items;    // array of pointers to MenuItem data

@@ -123,7 +123,7 @@ bool menu_scroll_down(HotSpot *hs, void *mptr)
   return true;    // redraw screen
 }
 
-// Define the Hotspots the menu uses
+// Define the Hotspots the menu items use
 static HotSpot hs_menu[] =
 {
   // menuitem hotspots
@@ -132,6 +132,14 @@ static HotSpot hs_menu[] =
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
+  // the 'scroll' hotspots
+  {0, DEPTH_FREQ_DISPLAY, 50, 50, menu_scroll_up, 1},
+  {0, ts_height-50, 50, 50, menu_scroll_down, 1},
+};
+
+// Define the Hotspots the menu scroll widgets use
+static HotSpot hs_scroll[] =
+{
   // the 'scroll' hotspots
   {0, DEPTH_FREQ_DISPLAY, 50, 50, menu_scroll_up, 1},
   {0, ts_height-50, 50, 50, menu_scroll_down, 1},
@@ -299,17 +307,30 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 {
   DEBUG(">>>>>>>>>>>>>>> menu_handletouch: entered, x=%d, y=%d, is_menu=%s, hslen=%d, menu->top=%d\n",
         x, y, is_menu ? "true" : "false", hslen, menu->top);
+  menu_dump("Menu:", menu);
+  hs_dump("Hotspots:", hs, hslen);
+  DEBUG("menu_scroll_down=%p\n", menu_scroll_down);
 
-  for (int i = 0; i < hslen; ++hs, ++i)
+  int max_scan = (is_menu) ? MAXMENUITEMROWS : hslen;
+
+  for (int i = 0; i < max_scan; ++hs, ++i)
   {
+    DEBUG("loop: i=%d, x=%d, y=%d\n", i, x, y);
+    DEBUG("loop: limits: hs->x=%d, hs->y=%d, hs->x + hs->w=%d, hs->y + hs->h=%d\n\n",
+          hs->x, hs->y, hs->x + hs->w, hs->y + hs->h);
+    
     if ((x >= hs->x) && (x < hs->x + hs->w) &&
         (y >= hs->y) && (y < hs->y + hs->h))
     {
       int ndx = i + menu->top;   // index of actual menuitem/action
+      DEBUG("***** hit hs @ i=%d, is_menu=%s\n", i, (is_menu) ? "true" : "false");
+      
       
       if (is_menu)
       { // we have a menu
         struct MenuItem *mi = menu->items[ndx];
+        DEBUG("***** hit hs @ i=%d, ndx=%d, is_menu=%s\n", i, ndx, (is_menu) ? "true" : "false");
+        menu_dump("Menu:", menu);
 
         if (mi->menu)
         {
@@ -349,7 +370,10 @@ void menu_show(struct Menu *menu)
 { 
   DEBUG(">>>>> menu_show: entered, menu->title=%s\n", menu->title);
 
-  // draw the menu page
+  // first draw of menu, set scroll to top of menuitems
+  menu->top = 0;
+
+  // draw the menu screen
   menu_draw(menu);
           
   // event loop for handling menu
@@ -364,18 +388,25 @@ void menu_show(struct Menu *menu)
       if (menu_handletouch(x, y, hs_menu, ALEN(hs_menu), true, menu))
       {
         DEBUG("<<<<< menu_show: menuitem touch handled, menu->title=%s\n", menu->title);
+        menu_draw(menu);
+        continue;
       }
-      else
+
+      DEBUG("menu_show: Checking scroll touch\n");
+      if (menu_handletouch(x, y, hs_scroll, ALEN(hs_scroll), false, menu))
       {
-        DEBUG("menu_show: Checking other touch\n");
-        if (menu_handletouch(x, y, hs_back, ALEN(hs_back), false, menu))
-        {
-          DEBUG("<<<<< menu_show: 'other' touch handled, menu->title=%s\n", menu->title);
-          return;
-        }
+        DEBUG("<<<<< menu_show: 'scroll' touch handled, menu->title=%s\n", menu->title);
+        menu_draw(menu);
+        continue;
       }
       
-      menu_draw(menu);
+      DEBUG("menu_show: Checking BACK touch\n");
+      if (menu_handletouch(x, y, hs_back, ALEN(hs_back), false, menu))
+      {
+        DEBUG("<<<<< menu_show: 'BACK' touch handled, menu->title=%s\n", menu->title);
+        return;
+      }
+      
     }
   }
 }
