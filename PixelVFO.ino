@@ -15,6 +15,7 @@
 #include "PixelVFO.h"
 #include "hotspot.h"
 #include "menu.h"
+#include "actions.h"
 #include "utils.h"
 
 #define MAJOR_VERSION   "0"
@@ -386,56 +387,6 @@ void display_flash(void)
   Serial.printf(F("display_flash: called\n"));
 }
 
-//-----------------------------------------------
-// Menuitem action handlers
-// Return 'true' if screen must be redrawn.
-//-----------------------------------------------
-
-bool reset_no_action(void)
-{
-  DEBUG("reset_no_action: called\n");
-  util_alert("Test of alert.");
-  return true;    // redraw screen
-}
-
-bool reset_action(void)
-{
-  DEBUG("reset_action: called\n");
-  bool result = util_confirm("Test of confirm.");
-  DEBUG("confirm dialog returnd '%s'\n", (result) ? "true" : "false");
-  return false;   // don't redraw screen
-}
-
-bool brightness_action(void)
-{
-  DEBUG("brightness_action: called\n");
-  return false;   // don't redraw screen
-}
-
-bool calibrate_action(void)
-{
-  DEBUG("calibrate_action: called\n");
-  return false;   // don't redraw screen
-}
-
-bool saveslot_action(void)
-{
-  DEBUG("saveslot_action: called\n");
-  return false;   // don't redraw screen
-}
-
-bool restoreslot_action(void)
-{
-  DEBUG("restoreslot_action: called\n");
-  return false;   // don't redraw screen
-}
-
-bool deleteslot_action(void)
-{
-  DEBUG("deleteslot_action: called\n");
-  return false;   // don't redraw screen
-}
-
 bool hs_creditsback_handler(HotSpot *hs, void *ignore)
 {
   DEBUG("hs_creditsback_handler: called\n");
@@ -475,9 +426,10 @@ bool credits_action(void)
   
     if (pen_touch(&x, &y))
     {
-      if (hs_handletouch(x, y, hs_credits, CreditsHSLen))
+      if (HotSpot *hs = hs_touched(x, y, hs_credits, CreditsHSLen))
       {
-        DEBUG("credits_action: hs_handletouch() returned 'true', returning 'true'\n");
+        (*hs->handler)(hs, (void *) hs->arg);
+        DEBUG("credits_action: hs_touched() called, returning 'true'\n");
         return true;
       }
     }
@@ -488,19 +440,19 @@ bool credits_action(void)
 // Define the PixelVFO menu system
 //-----------------------------------------------
 
-struct MenuItem mi_reset_no = {"No", NULL, &reset_no_action};
-struct MenuItem mi_reset_yes = {"Yes", NULL, &reset_action};
+struct MenuItem mi_reset_no = {"No", NULL, &action_no_reset};
+struct MenuItem mi_reset_yes = {"Yes", NULL, &action_reset};
 struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
 struct Menu reset_menu = {"Reset all", 0, ALEN(mia_reset), mia_reset};          
 
-struct MenuItem mi_brightness = {"Brightness", NULL, &brightness_action};
-struct MenuItem mi_calibrate = {"Calibrate", NULL, &calibrate_action};
+struct MenuItem mi_brightness = {"Brightness", NULL, &action_brightness};
+struct MenuItem mi_calibrate = {"Calibrate", NULL, &action_calibrate};
 struct MenuItem *mia_settings[] = {&mi_brightness, &mi_calibrate};
 struct Menu settings_menu = {"Settings", 0, ALEN(mia_settings), mia_settings};
 
-struct MenuItem mi_saveslot = {"Save slot", NULL, &saveslot_action};
-struct MenuItem mi_restoreslot = {"Restore slot", NULL, &restoreslot_action};
-struct MenuItem mi_deleteslot = {"Delete slot", NULL, &deleteslot_action};
+struct MenuItem mi_saveslot = {"Save slot", NULL, &action_slot_save};
+struct MenuItem mi_restoreslot = {"Restore slot", NULL, &action_slot_restore};
+struct MenuItem mi_deleteslot = {"Delete slot", NULL, &action_slot_delete};
 struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
 struct Menu slots_menu = {"Slots", 0, ALEN(mia_slots), mia_slots};
 
@@ -629,9 +581,9 @@ HotSpot hs_mainscreen[] =
   {FREQ_OFFSET_X + 6*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 6},
   {FREQ_OFFSET_X + 7*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, freq_hs_handler, 7},
   // the "ONLINE/Standby" button
-  {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, online_hs_handler, 0},
+  {ONLINE_X, ONLINE_Y, ONLINE_WIDTH, ONLINE_HEIGHT, online_hs_handler, -1},
   // the "Menu" button
-  {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, 0},
+  {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, -2},
 };
 
 //***********************************************
@@ -642,13 +594,15 @@ HotSpot hs_mainscreen[] =
 //-----------------------------------------------
 // Handle pressing a displayed frequency digit.
 //     hs_ptr  a pointer to the actioned HotSpot item
-//     ignore  ignored
+//     arg     (void *) freq char offset
 //-----------------------------------------------
 
-bool freq_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool freq_hs_handler(HotSpot *hs_ptr, void *arg)
 {
-  freq_digit_select = hs_ptr->arg;
-  keypad_show(hs_ptr->arg);
+  int offset = (int) arg;
+  
+  freq_digit_select = offset;
+  keypad_show(offset);
   return true;    // redraw the screen
 }
 
@@ -708,15 +662,16 @@ char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 
 //-----------------------------------------------
 // User pressed keypad button.
-//     hs  address of hotspot data object
+//     hs   address of hotspot data object
+//     arg  (void *) number of keypad button
 // Update the frequency display.
 //-----------------------------------------------
 
-bool keypad_handler(HotSpot *hs, void *ignore)
+bool keypad_handler(HotSpot *hs, void *arg)
 {
-  int arg = hs->arg;
-
-  freq_display[freq_digit_select] = '0' + arg;
+  int offset = (int) arg;
+  
+  freq_display[freq_digit_select] = '0' + offset;
   freq_digit_select += 1;
   if (freq_digit_select >= NUM_F_CHAR)
     freq_digit_select = NUM_F_CHAR - 1;
@@ -732,14 +687,16 @@ bool keypad_not_used(HotSpot *hs, void *ignore)
 
 bool keypad_close_handler(HotSpot *hs, void *ignore)
 {
-  DEBUG("keypad_close_handler: called\n");
+  freq_digit_select = -1;
   return true;    // redraw screen
 }
 
-bool keypad_freq_handler(HotSpot *hs, void *ignore)
+bool keypad_freq_handler(HotSpot *hs, void *arg)
 {
-  freq_digit_select = hs->arg;
-  freq_show(freq_digit_select);
+  int offset = (int) arg;
+  
+  freq_digit_select = offset;
+  freq_show(offset);
   return false;   // don't redraw screen
 }
 
@@ -757,7 +714,7 @@ HotSpot hs_keypad[] =
   {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 9},
   {-1, -1, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_not_used, -1},     // empty slot
   {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_handler, 0},
-  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_close_handler, 0},  // the '#' button
+  {0, 0, KEYPAD_BUTTON_W, KEYPAD_BUTTON_H, keypad_close_handler, -1},  // the '#' button
   {FREQ_OFFSET_X + 0*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 0},
   {FREQ_OFFSET_X + 1*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 1},
   {FREQ_OFFSET_X + 2*CHAR_WIDTH, 0, CHAR_WIDTH, DEPTH_FREQ_DISPLAY-4, keypad_freq_handler, 2},
@@ -810,6 +767,7 @@ void keypad_button_draw(char ch, int x, int y)
 void keypad_show(int offset)
 {
   // highlight the frequency digit we are changing
+  freq_digit_select = offset;
   freq_show(offset);
 
   // remove the online/menu buttons
@@ -839,9 +797,11 @@ void keypad_show(int offset)
   
     if (pen_touch(&x, &y))
     {
-      if (hs_handletouch(x, y, hs_keypad, KeypadHSLen))
+      if (HotSpot *hs = hs_touched(x, y, hs_keypad, KeypadHSLen))
       {
-        return;
+        (*hs->handler)(hs, (void *) hs->arg);
+        if (hs->arg == -1)
+          return;
       }
     }
   }
@@ -902,8 +862,9 @@ void loop()
   
   if (pen_touch(&x, &y))
   {
-    if (hs_handletouch(x, y, hs_mainscreen, ALEN(hs_mainscreen)))
+    if (HotSpot *hs = hs_touched(x, y, hs_mainscreen, ALEN(hs_mainscreen)))
     {
+      (*hs->handler)(hs, (void *) hs->arg);
       draw_screen();
       freq_show();
     }

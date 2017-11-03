@@ -12,15 +12,7 @@
 #include "hotspot.h"
 #include "utils.h"
 
-extern int ts_width;
-extern int ts_height;
-
 // constants for the menu system
-#define MENU_FG             ILI9341_BLACK
-#define MENU_BG             ILI9341_GREEN
-#define MENUITEM_HEIGHT     38
-#define MAXMENUITEMROWS     5
-
 #define MENU_SCROLL_WIDTH   20
 #define MENU_SCROLL_OFFSET  0
 #define SCROLL_HEIGHT       20
@@ -35,6 +27,7 @@ extern int ts_height;
 #define MENUBACK_X          (ts_width - MENUBACK_WIDTH - 1)
 #define MENUBACK_Y          ((DEPTH_FREQ_DISPLAY - MENUBACK_HEIGHT)/2)
 #define MENU_ITEM_BG        0x0700
+
 
 // function forward definitions
 const char *mi_display(struct MenuItem *mi);
@@ -104,8 +97,8 @@ bool menu_scroll_up(HotSpot *hs, void *mptr)
 
 //----------------------------------------
 // Handler if user clicks DOWN on a scrollbar widget.
-//     hs   address of HotSpot item clicked on
-//     mi   address of MenuItem to action
+//     hs    address of HotSpot item clicked on
+//     mptr  address of Menu to action
 //----------------------------------------
 
 bool menu_scroll_down(HotSpot *hs, void *mptr)
@@ -124,7 +117,7 @@ bool menu_scroll_down(HotSpot *hs, void *mptr)
 }
 
 // Define the Hotspots the menu items use
-static HotSpot hs_menu[] =
+HotSpot hs_menu[] =
 {
   // menuitem hotspots
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 0},
@@ -200,13 +193,13 @@ void menuBackButton(void)
   util_button("Back", MENUBACK_X, MENUBACK_Y, MENUBACK_WIDTH, MENUBACK_HEIGHT,
               MENUBACK_BG, MENUBACK_BG2, MENUBACK_FG);
 }
-  
+
 //----------------------------------------
 // Draw a menu on the screen.
 //     menu  pointer to a Menu structure
 //----------------------------------------
   
-static void menu_draw(struct Menu *menu)
+void menu_draw(struct Menu *menu)
 {
   DEBUG(">>>>>>>>>> menu_draw: entered, menu title=%s\n", menu->title);
 
@@ -410,3 +403,4 @@ void menu_show(struct Menu *menu)
     }
   }
 }
+

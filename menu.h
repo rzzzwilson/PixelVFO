@@ -33,10 +33,17 @@ struct Menu
   struct MenuItem **items;    // array of pointers to MenuItem data
 };
 
+#define MENU_FG             ILI9341_BLACK
+#define MENU_BG             ILI9341_GREEN
+#define MENUITEM_HEIGHT     38
+#define MAXMENUITEMROWS     5
+
+
+
 
 // menu functions
 //void menu_dump(const char *msg, struct Menu *menu);
-//const char *mi_display(struct MenuItem *mi);
+const char *mi_display(struct MenuItem *mi);
 void menuBackButton(void);
 
 //**************************************

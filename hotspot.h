@@ -31,6 +31,7 @@ struct HotSpot
 
 // hotspot functions
 bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len);
+HotSpot * hs_touched(int touch_x, int touch_y, HotSpot *hs, int hs_len);
 const char *hs_display(HotSpot *hs);
 void hs_dump(char const *msg, HotSpot *hs, int len);
 

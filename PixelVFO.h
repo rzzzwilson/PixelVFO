@@ -63,4 +63,7 @@ void dump_mem(const char *msg);
 void dumphex(const char *msg, void *base, int num);
 #endif
 
+extern int ts_width;
+extern int ts_height;
+
 #endif
