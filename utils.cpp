@@ -67,10 +67,10 @@ void util_button(const char *title, int x, int y, int w, int h,
 
 static bool dlg_handler(HotSpot *hs_ptr, void *arg)
 {
-  int offset = (int) arg;
+  bool result = (bool) arg;
   
-  DEBUG("dlg_handler: called, arg=%d\n", offset);
-  return true;    // redraw screen
+  DEBUG("dlg_handler: called, result=%s\n", (result) ? "true" : "false");
+  return result;    // redraw screen or not
 }
 
 //----------------------------------------
@@ -83,12 +83,12 @@ static HotSpot hs_dlg_alert[] =
    OK_WIDTH, OK_HEIGHT, dlg_handler, 0}
 };
 
-static HotSpot hs_dlg_confirm[] =
+HotSpot hs_dlg_confirm[] =
 {
   {ALERT_X + ALERT_W - OK_WIDTH - 4, ALERT_Y + ALERT_H - OK_HEIGHT - 4,
    OK_WIDTH, OK_HEIGHT, dlg_handler, 1},
   {ALERT_X + 4, ALERT_Y + ALERT_H - CANCEL_HEIGHT - 4,
-   CANCEL_WIDTH, CANCEL_HEIGHT, dlg_handler, 2}
+   CANCEL_WIDTH, CANCEL_HEIGHT, dlg_handler, 0}
 };
 
 //----------------------------------------
@@ -178,18 +178,12 @@ bool util_confirm(const char *msg)
 
     if (pen_touch(&x, &y))
     {
-      if (hs_handletouch(x, y, hs_dlg_confirm, ALEN(hs_dlg_confirm)))
+      if (bool result = hs_handletouch(x, y, hs_dlg_confirm, ALEN(hs_dlg_confirm)))
       {
-        DEBUG("alert: returning, OK selected\n");
-        return true;
+        DEBUG("confirm: returning, %s selected, returning %s\n",
+              (result) ? "OK" : "Cancel", (result) ? "true" : "false");
+        return result;
       }
-#if 0
-      if (hs_handletouch(x, y, hs_dlg_cancel, ALEN(hs_dlg_cancel)))
-      {
-        DEBUG("alert: returning, CANCEL selected\n");
-        return false;
-      }
-#endif
     }
   }
 }

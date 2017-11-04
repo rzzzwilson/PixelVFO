@@ -32,7 +32,7 @@ bool action_reset(void)
   DEBUG("action_reset: called\n");
   bool result = util_confirm("Test of confirm.");
   DEBUG("confirm dialog returnd '%s'\n", (result) ? "true" : "false");
-  return false;   // don't redraw screen
+  return true;   // don't redraw screen
 }
 
 //-----------------------------------------------
@@ -61,8 +61,6 @@ bool action_calibrate(void)
 
 bool act_menuslot_handler(HotSpot *hs, void *arg)
 {
-  int offset = (int) arg;
-  
   MenuItem *mi_ptr = NULL;
   bool result = false;
   
@@ -92,19 +90,6 @@ bool act_scroll_down(HotSpot *hs, void *arg)
 {
   return true;
 }
-
-static HotSpot hs_slots[] =
-{
-  // menuitem hotspots
-  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*0, ts_width, MENUITEM_HEIGHT, act_menuslot_handler, 0},
-  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*1, ts_width, MENUITEM_HEIGHT, act_menuslot_handler, 1},
-  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, act_menuslot_handler, 2},
-  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, act_menuslot_handler, 3},
-  {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, act_menuslot_handler, 4},
-  // the 'scroll' hotspots
-  {0, DEPTH_FREQ_DISPLAY, 50, 50, act_scroll_up, 1},
-  {0, ts_height-50, 50, 50, act_scroll_down, 1},
-};
 
 bool action_slot_save(void)
 {

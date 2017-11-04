@@ -59,6 +59,8 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
 {
   for (int i = 0; i < hs_len; ++hs, ++i)
   {
+    DEBUG("***** hs: x=%d, y=%d, arg=%s\n", hs->x, hs->y, hs->arg);
+    
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {

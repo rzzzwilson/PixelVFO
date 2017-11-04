@@ -842,11 +842,11 @@ void setup(void)
   // draw the 'thousands' markers
   draw_thousands();
 
-#if 0
+//#if 0
   // draw the 'edge of digits' markers
   for (int i = 0; i <= NUM_F_CHAR; ++i)
     tft.drawFastVLine(freq_char_x_offset[i], 44, 6, ILI9341_RED);
-#endif
+//#endif
 
   // show the frequency
   freq_show();

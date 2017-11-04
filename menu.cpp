@@ -55,29 +55,26 @@ bool hs_menuback_handler(HotSpot *hs, void *ignore)
 bool hs_menuitem_handler(HotSpot *hs, void *mi)
 {
   MenuItem *mi_ptr = (MenuItem *) mi;
-  bool result = false;
   
   DEBUG(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
         hs_display(hs), mi_display(mi_ptr));
   if (mi_ptr->menu)
   {
     menu_show(mi_ptr->menu);
-    result = true;
+    return true;
   }
   else
   {
     mi_ptr->action();
-    result = false;
+    return false;
   }
-  DEBUG("<<<<< hs_menuitem_handler: returning '%s'\n",
-        (result) ? "true" : "false");
-  return result;
 }
 
 //----------------------------------------
 // Handler if user clicks UP on a scrollbar widget.
 //     hs    address of HotSpot item clicked on
 //     mptr  address of Menu
+// Returns 'true' (redraw menu) if scroll happened, else 'false'.
 //----------------------------------------
 
 bool menu_scroll_up(HotSpot *hs, void *mptr)
@@ -88,11 +85,19 @@ bool menu_scroll_up(HotSpot *hs, void *mptr)
   menu_dump("menu_scroll_up: menu", menu); 
 
   // add 'arg' to menu 'top' value and normalize
-  menu->top -= arg;
-  if (menu->top < 0)
-      menu->top = 0;
-
-  return true;    // redraw screen
+  if (menu->top != 0) 
+  {
+    // we can scroll
+    menu->top -= arg;
+    if (menu->top < 0)
+        menu->top = 0;
+    return true;    // redraw screen
+  }
+  else
+  {
+    // we can't scroll
+    return false;   // don't redraw screen
+  }
 }
 
 //----------------------------------------
@@ -109,11 +114,19 @@ bool menu_scroll_down(HotSpot *hs, void *mptr)
   menu_dump("menu_scroll_down: menu", menu); 
 
   // add 'arg' to menu 'top' value and normalize
-  menu->top += arg;
-  if (menu->top > menu->num_items - MAXMENUITEMROWS)
-      menu->top = menu->num_items - MAXMENUITEMROWS;
-
-  return true;    // redraw screen
+  if (menu->top < (menu->num_items - MAXMENUITEMROWS))
+  {
+    // we can scroll
+    menu->top += arg;
+    if (menu->top > menu->num_items - MAXMENUITEMROWS)
+        menu->top = menu->num_items - MAXMENUITEMROWS;
+    return true;    // redraw screen
+  }
+  else
+  {
+    // we can't scroll
+    return false;   // don't redraw screen
+  }
 }
 
 // Define the Hotspots the menu items use
@@ -125,9 +138,6 @@ HotSpot hs_menu[] =
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*2, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 2},
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*3, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 3},
   {100, DEPTH_FREQ_DISPLAY+MENUITEM_HEIGHT*4, ts_width, MENUITEM_HEIGHT, hs_menuitem_handler, 4},
-  // the 'scroll' hotspots
-  {0, DEPTH_FREQ_DISPLAY, 50, 50, menu_scroll_up, 1},
-  {0, ts_height-50, 50, 50, menu_scroll_down, 1},
 };
 
 // Define the Hotspots the menu scroll widgets use
@@ -239,20 +249,6 @@ void menu_draw(struct Menu *menu)
     mi_y += MENUITEM_HEIGHT;
   }
 
-  // highlight the active menuitems
-#ifdef DRAW_HIGHLIGHTS
-  for (int i = 0; i < menu->num_items; ++i)
-  {
-    if (i >= MAXMENUITEMROWS)   // break out if max showable is reached
-      break;
-      
-    HotSpot *hs = &hs_menu[i];
-    
-    //tft.drawFastHLine(0, hs->y+MENUITEM_HEIGHT, ts_width, MENU_ITEM_BG);
-    tft.drawRect(hs->x, hs->y, hs->w, hs->h, MENU_ITEM_BG);
-  }
-#endif
-
   // draw the scroll widget if required
   if (menu->num_items > MAXMENUITEMROWS)
   {
@@ -266,16 +262,6 @@ void menu_draw(struct Menu *menu)
                      MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH-1, ts_height-1-SCROLL_HEIGHT,
                      MENU_SCROLL_OFFSET + MENU_SCROLL_WIDTH/2, ts_height-1,
                      SCROLL_FG);
-
-#ifdef DRAW_HIGHLIGHTS
-    // draw boxes around scrollbar and back button
-    for (uint i = 0; i < ALEN(hs_back); ++i)
-    {
-      HotSpot *hs = &hs_back[i];
-      
-      tft.drawRect(hs->x, hs->y, hs->w, hs->h, MENU_ITEM_BG);
-    }
-#endif
   }
 
   DEBUG("<<<<<<<<<< menu_draw: exit, menu title=%s\n", menu->title);
@@ -343,9 +329,9 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
       else
       { // just call action HotSpot routine
         DEBUG("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
-        hs->handler(hs, (void *) menu);
-        DEBUG("menu_handletouch: returning 'true'\n");
-        return true;
+        bool result = hs->handler(hs, (void *) menu);
+        DEBUG("menu_handletouch: returning '%s'\n", (result) ? "true" : "false");
+        return result;
       }
     }
   }
@@ -399,7 +385,6 @@ void menu_show(struct Menu *menu)
         DEBUG("<<<<< menu_show: 'BACK' touch handled, menu->title=%s\n", menu->title);
         return;
       }
-      
     }
   }
 }
