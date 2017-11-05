@@ -149,7 +149,7 @@ will define one menu and will contain a title string and one or more
 MenuItem references.  The MenuItem structure will contain a display string
 and either a sub-menu reference or a reference to an action function,
 depending on whether clicking on the item draws a sub-menu or performs
-some action, respectively.
+some action, respectively.  ::
 
     struct Menu
     {
@@ -185,3 +185,38 @@ accomplished by adjusting the **top** value for the menu and redrawing it.
 Clicking on the back button calls the handler that returns **true**, thereby
 exiting the current (sub-)menu.
 
+HotSpots
+--------
+
+To help with pressing of buttons and selection of menu items, there will be
+*HotSpots*.  This struct::
+
+    typedef bool (*HS_Handler)(HotSpot *, void *);
+    
+    // a hotspot definition
+    struct HotSpot
+    {
+      int x;                // X coord of the hotspot top-left corner
+      int y;                // Y coord of the hotspot top-left corner
+      int w;                // hotspot width in pixels
+      int h;                // hotspot height in pixels
+      HS_Handler handler;   // address of handler function
+      int arg;              // first arg to handler
+    };
+
+Defines a HotSpot, an area of the screen defined by *x*, *y*, *w* and *h*.
+The HotSpot code will call the *handler* function passing the address of the
+HotSpot struct that was touched along with the *arg* value.
+
+The main function used for HotSpots is::
+
+    HotSpot * hs_touched(int touch_x, int touch_y, HotSpot *hs, int hs_len);
+
+which is passed:
+
+* the *x* and *y* coordinates of where the screen was touched
+* the base address of an array of HotSpot structs (*hs*)
+* the number of HotSpot elements in the array (*hs_len*)
+
+The function returns None if there was no touch within any of the HotSpot
+structs, or the address of the first HotSpot struct that was touched.
