@@ -16,7 +16,7 @@ struct HotSpot;
 
 // a hotspot handler function typedef
 // a handler returns 'true' if the screen should be redrawn
-typedef bool (*HS_Handler)(HotSpot *, void *);
+typedef bool (*HS_Handler)(HotSpot *);
 
 // a hotspot definition
 struct HotSpot

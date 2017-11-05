@@ -64,7 +64,7 @@ bool hs_handletouch(int touch_x, int touch_y, HotSpot *hs, int hs_len)
     if ((touch_x >= hs->x) && (touch_x < hs->x + hs->w) &&
         (touch_y >= hs->y) && (touch_y < hs->y + hs->h))
     {
-      bool result = (hs->handler)(hs, 0);
+      bool result = (hs->handler)(hs);
       DEBUG("hs_handletouch: called hs->handler=%p, result='%s'\n",
             hs->handler, (result) ? "true" : "false");
       return result;

@@ -65,9 +65,9 @@ void util_button(const char *title, int x, int y, int w, int h,
 // Handle clicks on the OK and CANCEL dialog buttons
 //----------------------------------------
 
-static bool dlg_handler(HotSpot *hs_ptr, void *arg)
+static bool dlg_handler(HotSpot *hs)
 {
-  bool result = (bool) arg;
+  bool result = (bool) hs->arg;
   
   DEBUG("dlg_handler: called, result=%s\n", (result) ? "true" : "false");
   return result;    // redraw screen or not
@@ -139,7 +139,7 @@ void util_alert(const char *msg)
     {
       if (HotSpot *hs = hs_touched(x, y, hs_dlg_alert, DlgAlertHSLen))
       {
-        (*hs->handler)(hs, (void *) hs->arg);
+        (*hs->handler)(hs);
         DEBUG("alert: returning, OK selected\n");
         return;
       }
@@ -185,7 +185,7 @@ bool util_confirm(const char *msg)
     {
       if (HotSpot *hs = hs_touched(x, y, hs_dlg_confirm, DlgConfirmHSLen))
       {
-        bool result = (*hs->handler)(hs, (void *) hs->arg);
+        bool result = (*hs->handler)(hs);
         DEBUG("confirm: returning, %s selected, returning %s\n",
               (result) ? "OK" : "Cancel", (result) ? "true" : "false");
         return result;

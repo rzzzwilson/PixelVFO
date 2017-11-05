@@ -387,7 +387,7 @@ void display_flash(void)
   Serial.printf(F("display_flash: called\n"));
 }
 
-bool hs_creditsback_handler(HotSpot *hs, void *ignore)
+bool hs_creditsback_handler(HotSpot *hs)
 {
   DEBUG("hs_creditsback_handler: called\n");
   return true;    // redraw screen
@@ -428,7 +428,7 @@ bool credits_action(void)
     {
       if (HotSpot *hs = hs_touched(x, y, hs_credits, CreditsHSLen))
       {
-        (*hs->handler)(hs, (void *) hs->arg);
+        (*hs->handler)(hs);
         DEBUG("credits_action: hs_touched() called, returning 'true'\n");
         return true;
       }
@@ -596,12 +596,11 @@ HotSpot hs_mainscreen[] =
 //-----------------------------------------------
 // Handle pressing a displayed frequency digit.
 //     hs_ptr  a pointer to the actioned HotSpot item
-//     arg     (void *) freq char offset
 //-----------------------------------------------
 
-bool freq_hs_handler(HotSpot *hs_ptr, void *arg)
+bool freq_hs_handler(HotSpot *hs)
 {
-  int offset = (int) arg;
+  int offset = (int) hs->arg;
   
   freq_digit_select = offset;
   keypad_show(offset);
@@ -614,7 +613,7 @@ bool freq_hs_handler(HotSpot *hs_ptr, void *arg)
 //     ignore  ignored
 //-----------------------------------------------
 
-bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool online_hs_handler(HotSpot *hs_ptr)
 {
   // toggle state and redraw the button
   if (vfo_state == VFO_Standby)
@@ -635,10 +634,9 @@ bool online_hs_handler(HotSpot *hs_ptr, void *ignore)
 //-----------------------------------------------
 // Action routine called when the "Menu" button is pressed.
 //     hs_ptr  a pointer to the HotSpot item actioned
-//     ignore  not used
 //-----------------------------------------------
 
-bool menu_hs_handler(HotSpot *hs_ptr, void *ignore)
+bool menu_hs_handler(HotSpot *hs_ptr)
 {
   menu_show(&menu_main);
   return true;
@@ -665,13 +663,12 @@ char keypad_chars[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 //-----------------------------------------------
 // User pressed keypad button.
 //     hs   address of hotspot data object
-//     arg  (void *) number of keypad button
 // Update the frequency display.
 //-----------------------------------------------
 
-bool keypad_handler(HotSpot *hs, void *arg)
+bool keypad_handler(HotSpot *hs)
 {
-  int offset = (int) arg;
+  int offset = (int) hs->arg;
   
   freq_display[freq_digit_select] = '0' + offset;
   freq_digit_select += 1;
@@ -681,21 +678,21 @@ bool keypad_handler(HotSpot *hs, void *arg)
   return false;   // don't redraw scren
 }
 
-bool keypad_not_used(HotSpot *hs, void *ignore)
+bool keypad_not_used(HotSpot *hs)
 {
   abort("keypad_not_used() called, SHOULD NOT BE!?\n");
   return true;    // to keep compiler happy, abort() doesn't return
 }
 
-bool keypad_close_handler(HotSpot *hs, void *ignore)
+bool keypad_close_handler(HotSpot *hs)
 {
   freq_digit_select = -1;
   return true;    // redraw screen
 }
 
-bool keypad_freq_handler(HotSpot *hs, void *arg)
+bool keypad_freq_handler(HotSpot *hs)
 {
-  int offset = (int) arg;
+  int offset = (int) hs->arg;
   
   freq_digit_select = offset;
   freq_show(offset);
@@ -801,7 +798,7 @@ void keypad_show(int offset)
     {
       if (HotSpot *hs = hs_touched(x, y, hs_keypad, KeypadHSLen))
       {
-        (*hs->handler)(hs, (void *) hs->arg);
+        (*hs->handler)(hs);
         if (hs->arg == -1)
           return;
       }
@@ -866,7 +863,7 @@ void loop()
   {
     if (HotSpot *hs = hs_touched(x, y, hs_mainscreen, MainscreenHSLen))
     {
-      (*hs->handler)(hs, (void *) hs->arg);
+      (*hs->handler)(hs);
       draw_screen();
       freq_show();
     }

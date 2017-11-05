@@ -36,11 +36,10 @@ void menu_dump(char const *msg, Menu *menu);
 //----------------------------------------
 // Handler if user clicks on "Back" button.
 //     hs  address of HotSpot item clicked on (the "Back" button)
-//
 // Just returns 'true' - a signal that we should return from the menu.
 //----------------------------------------
 
-bool hs_menuback_handler(HotSpot *hs, void *ignore)
+bool hs_menuback_handler(HotSpot *hs)
 {
   DEBUG("hs_menuback_handler: called\n");
   return true;    // redraw screen
@@ -49,12 +48,11 @@ bool hs_menuback_handler(HotSpot *hs, void *ignore)
 //----------------------------------------
 // Handler if user clicks on a MenuItem hotspot.
 //     hs   address of HotSpot MenuItem clicked on
-//     mi   address of MenuItem to action
 //----------------------------------------
 
-bool hs_menuitem_handler(HotSpot *hs, void *mi)
+bool hs_menuitem_handler(HotSpot *hs)
 {
-  MenuItem *mi_ptr = (MenuItem *) mi;
+  MenuItem *mi_ptr = (MenuItem *) hs->arg;    // address of MenuItem to action
   
   DEBUG(">>>>> hs_menuitem_handler: entered, hs=\n%s\nmi=\n%s\n",
         hs_display(hs), mi_display(mi_ptr));
@@ -73,22 +71,18 @@ bool hs_menuitem_handler(HotSpot *hs, void *mi)
 //----------------------------------------
 // Handler if user clicks UP on a scrollbar widget.
 //     hs    address of HotSpot item clicked on
-//     mptr  address of Menu
 // Returns 'true' (redraw menu) if scroll happened, else 'false'.
 //----------------------------------------
 
-bool menu_scroll_up(HotSpot *hs, void *mptr)
+bool menu_scroll_up(HotSpot *hs)
 {
-  Menu *menu = (Menu *) mptr;
-  int arg = hs->arg;
+  Menu *menu = (Menu *) hs->arg;    // address of Menu to action
 
-  menu_dump("menu_scroll_up: menu", menu); 
-
-  // add 'arg' to menu 'top' value and normalize
+  // add 1 to menu 'top' value and normalize
   if (menu->top != 0) 
   {
     // we can scroll
-    menu->top -= arg;
+    menu->top -= 1;
     if (menu->top < 0)
         menu->top = 0;
     return true;    // redraw screen
@@ -103,21 +97,19 @@ bool menu_scroll_up(HotSpot *hs, void *mptr)
 //----------------------------------------
 // Handler if user clicks DOWN on a scrollbar widget.
 //     hs    address of HotSpot item clicked on
-//     mptr  address of Menu to action
 //----------------------------------------
 
-bool menu_scroll_down(HotSpot *hs, void *mptr)
+bool menu_scroll_down(HotSpot *hs)
 {
-  Menu *menu = (Menu *) mptr;
-  int arg = hs->arg;
+  Menu *menu = (Menu *) hs->arg;    // address of Menu to action
 
   menu_dump("menu_scroll_down: menu", menu); 
 
-  // add 'arg' to menu 'top' value and normalize
+  // add 1 to menu 'top' value and normalize
   if (menu->top < (menu->num_items - MAXMENUITEMROWS))
   {
     // we can scroll
-    menu->top += arg;
+    menu->top += 1;
     if (menu->top > menu->num_items - MAXMENUITEMROWS)
         menu->top = menu->num_items - MAXMENUITEMROWS;
     return true;    // redraw screen
@@ -288,7 +280,6 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
         x, y, is_menu ? "true" : "false", hslen, menu->top);
   menu_dump("Menu:", menu);
   hs_dump("Hotspots:", hs, hslen);
-  DEBUG("menu_scroll_down=%p\n", menu_scroll_down);
 
   int max_scan = (is_menu) ? MAXMENUITEMROWS : hslen;
 
@@ -329,7 +320,8 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
       else
       { // just call action HotSpot routine
         DEBUG("menu_handletouch: calling HotSpot handler: %p\n", hs->handler);
-        bool result = hs->handler(hs, (void *) menu);
+        hs->arg = (int) menu;    // dynamically plug menu to handle into HotSpot
+        bool result = hs->handler(hs);
         DEBUG("menu_handletouch: returning '%s'\n", (result) ? "true" : "false");
         return result;
       }
