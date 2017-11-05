@@ -205,7 +205,7 @@ To help with pressing of buttons and selection of menu items, there will be
     };
 
 defines a HotSpot, an area of the screen defined by *x*, *y*, *w* and *h*.
-The *handler* function is passeda the address of the
+The *handler* function is passed an address of a
 HotSpot struct that was touched along with the *arg* value.
 
 The main function used for HotSpots is::
