@@ -77,11 +77,13 @@ static bool dlg_handler(HotSpot *hs_ptr, void *arg)
 // Define hotspots for the ALERT and CONFIRM dialogs
 //----------------------------------------
 
-static HotSpot hs_dlg_alert[] =
+HotSpot hs_dlg_alert[] =
 {
   {ALERT_X + ALERT_W - OK_WIDTH - 4, ALERT_Y + ALERT_H - OK_HEIGHT - 4,
    OK_WIDTH, OK_HEIGHT, dlg_handler, 0}
 };
+
+#define DlgAlertHSLen   ALEN(hs_dlg_alert)
 
 HotSpot hs_dlg_confirm[] =
 {
@@ -90,6 +92,8 @@ HotSpot hs_dlg_confirm[] =
   {ALERT_X + 4, ALERT_Y + ALERT_H - CANCEL_HEIGHT - 4,
    CANCEL_WIDTH, CANCEL_HEIGHT, dlg_handler, 0}
 };
+
+#define DlgConfirmHSLen   ALEN(hs_dlg_confirm)
 
 //----------------------------------------
 // Draw a single button ALERT dialog box.
@@ -133,8 +137,9 @@ void util_alert(const char *msg)
 
     if (pen_touch(&x, &y))
     {
-      if (hs_handletouch(x, y, hs_dlg_alert, ALEN(hs_dlg_alert)))
+      if (HotSpot *hs = hs_touched(x, y, hs_dlg_alert, DlgAlertHSLen))
       {
+        (*hs->handler)(hs, (void *) hs->arg);
         DEBUG("alert: returning, OK selected\n");
         return;
       }
@@ -178,8 +183,9 @@ bool util_confirm(const char *msg)
 
     if (pen_touch(&x, &y))
     {
-      if (bool result = hs_handletouch(x, y, hs_dlg_confirm, ALEN(hs_dlg_confirm)))
+      if (HotSpot *hs = hs_touched(x, y, hs_dlg_confirm, DlgConfirmHSLen))
       {
+        bool result = (*hs->handler)(hs, (void *) hs->arg);
         DEBUG("confirm: returning, %s selected, returning %s\n",
               (result) ? "OK" : "Cancel", (result) ? "true" : "false");
         return result;

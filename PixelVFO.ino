@@ -586,6 +586,8 @@ HotSpot hs_mainscreen[] =
   {MENUBTN_X, MENUBTN_Y, MENUBTN_WIDTH, MENUBTN_HEIGHT, menu_hs_handler, -2},
 };
 
+#define MainscreenHSLen   ALEN(hs_mainscreen)
+
 //***********************************************
 // Screen hotspot handlers.
 // Return 'true' if screen is to be redrawn.
@@ -862,7 +864,7 @@ void loop()
   
   if (pen_touch(&x, &y))
   {
-    if (HotSpot *hs = hs_touched(x, y, hs_mainscreen, ALEN(hs_mainscreen)))
+    if (HotSpot *hs = hs_touched(x, y, hs_mainscreen, MainscreenHSLen))
     {
       (*hs->handler)(hs, (void *) hs->arg);
       draw_screen();
