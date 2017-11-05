@@ -93,7 +93,6 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define ONLINE_FG           ILI9341_GREEN
 #define STANDBY_FG          ILI9341_BLACK
 
-
 // pen state
 static bool pen_down = false;  // pen up/down
 
@@ -112,9 +111,9 @@ int ts_height = SCREEN_HEIGHT;
 // state variables for frequency - display, etc
 // the characters in 'freq_display' are stored MSB at left (index 0)
 char freq_display[NUM_F_CHAR];                  // digits of frequency, as char values ['0'-'9']
-unsigned long frequency;                        // frequency as a long integer
+Frequency frequency;                            // frequency as a long integer
+SelOffset freq_digit_select = -1;               // index of selected digit in frequency display
 uint16_t freq_char_x_offset[NUM_F_CHAR + 1];    // x offset for start/end of each character on display
-int freq_digit_select = -1;                     // index of selected digit in frequency display
 
 uint32_t msraw = 0x80000000;
 #define MIN_REPEAT_PERIOD   250
