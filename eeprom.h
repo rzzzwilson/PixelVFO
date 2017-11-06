@@ -54,5 +54,6 @@ const int SaveOffsetBase = NEXT_FREE;
 // Given slot number, return freq/offset.
 void slot_get(int slot_num, Frequency &freq, SelOffset &offset);
 void slot_put(int slot_num, Frequency freq, SelOffset offset);
+void eeprom_init(void);
 
 #endif

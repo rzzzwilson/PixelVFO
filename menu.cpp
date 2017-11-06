@@ -30,8 +30,8 @@
 
 
 // function forward definitions
-const char *mi_display(struct MenuItem *mi);
-void menu_dump(char const *msg, Menu *menu);
+//const char *mi_display(struct MenuItem *mi);
+//void menu_dump(char const *msg, Menu *menu);
 
 //----------------------------------------
 // Handler if user clicks on "Back" button.
@@ -158,7 +158,7 @@ const char *mi_display(struct MenuItem *mi)
 {
   static char buffer[128];
 
-  sprintf(buffer, "mi: %p, title=%s, menu=%p, action=%p\n", mi, mi->title, mi->menu, mi->action);
+  sprintf(buffer, "mi: %p, title='%s', menu=%p, action=%p\n", mi, mi->title, mi->menu, mi->action);
   
   return buffer;
 }

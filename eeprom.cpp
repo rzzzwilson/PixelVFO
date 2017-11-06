@@ -94,6 +94,7 @@ void slot_get(int slot_num, Frequency &freq, SelOffset &offset)
   int offset_address = SaveOffsetBase + slot_num * sizeof(SelOffset);
 
   EEPROM.get(freq_address, freq);
+  DEBUG("slot_get: slot_num=%d, freq_address=%d, returning %ld\n", slot_num, freq_address, freq);
   EEPROM.get(offset_address, offset);
 }
 
@@ -105,6 +106,9 @@ void slot_get(int slot_num, Frequency &freq, SelOffset &offset)
 
 void slot_put(int slot_num, Frequency freq, SelOffset offset)
 {
+  DEBUG("slot_put: would store freq %ldHz and offset %d in slot %d\n",
+        freq, offset, slot_num);
+        
   int freq_address = SaveFreqBase + slot_num * sizeof(Frequency);
   int offset_address = SaveOffsetBase + slot_num * sizeof(SelOffset);
 
@@ -154,3 +158,16 @@ void dump_eeprom(void)
 }
 
 #endif
+
+void eeprom_init(void)
+{
+  for (int i = 0; i < 10; ++i)
+  {
+    int freq_address = SaveFreqBase + i * sizeof(Frequency);
+    int offset_address = SaveOffsetBase + i * sizeof(SelOffset);
+  
+    EEPROM.put(freq_address, 0);
+    EEPROM.put(offset_address, 0);
+  }
+}
+

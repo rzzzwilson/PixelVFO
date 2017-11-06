@@ -53,6 +53,9 @@ typedef int SelOffset;
 
 extern Adafruit_ILI9341 tft;
 
+extern Frequency frequency;                            // frequency as a long integer
+extern SelOffset freq_digit_select;                    // index of selected digit in frequency display
+
 // the abort() function exported from the top-level code
 void abort(const char *msg);
 

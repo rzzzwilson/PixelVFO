@@ -16,6 +16,7 @@
 #include "hotspot.h"
 #include "menu.h"
 #include "actions.h"
+#include "eeprom.h"
 #include "utils.h"
 
 #define MAJOR_VERSION   "0"
@@ -110,9 +111,9 @@ int ts_height = SCREEN_HEIGHT;
 
 // state variables for frequency - display, etc
 // the characters in 'freq_display' are stored MSB at left (index 0)
-char freq_display[NUM_F_CHAR];                  // digits of frequency, as char values ['0'-'9']
 Frequency frequency;                            // frequency as a long integer
-SelOffset freq_digit_select = -1;               // index of selected digit in frequency display
+SelOffset freq_digit_select;                    // index of selected digit in frequency display
+char freq_display[NUM_F_CHAR];                  // digits of frequency, as char values ['0'-'9']
 uint16_t freq_char_x_offset[NUM_F_CHAR + 1];    // x offset for start/end of each character on display
 
 uint32_t msraw = 0x80000000;
@@ -814,8 +815,11 @@ void setup(void)
   Serial.begin(115200);
   Serial.printf("PixelVFO %s.%s\n", MAJOR_VERSION, MINOR_VERSION);
 
+  eeprom_init();
+
   // set up the VFO frequency data structures
   frequency = 1000000L;
+  freq_digit_select = 0;                    // index of selected digit in frequency display
   freq_to_buff(freq_display, 1000000L);
 
   // initialize 'freq_char_x_offset' array
