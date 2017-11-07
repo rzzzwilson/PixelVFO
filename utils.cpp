@@ -50,7 +50,9 @@ void util_button(const char *title, int x, int y, int w, int h,
   uint16_t h1;
 
   // draw button background
+  tft.drawRoundRect(x, y, w, h, BUTTON_RADIUS, bg1);
   tft.fillRoundRect(x, y, w, h, BUTTON_RADIUS, bg1);
+
   tft.fillRoundRect(x+1, y+1, w-2, h-2, BUTTON_RADIUS, bg2);
   tft.setFont(FONT_BUTTON);
   tft.setTextColor(fg);
@@ -104,9 +106,10 @@ HotSpot hs_dlg_confirm[] =
 static void draw_alert(const char *msg)
 {
   // draw dialog body
-  tft.fillRoundRect(ALERT_X, ALERT_Y, ALERT_W, ALERT_H, CORNER_RADIUS, DLG_BG);
+  tft.drawRoundRect(ALERT_X, ALERT_Y, ALERT_W, ALERT_H, CORNER_RADIUS, DLG_BG);
+  tft.drawRoundRect(ALERT_X+1, ALERT_Y+1, ALERT_W-2, ALERT_H-2, CORNER_RADIUS, DLG_BG);
   tft.fillRoundRect(ALERT_X+2, ALERT_Y+2, ALERT_W-4, ALERT_H-4, CORNER_RADIUS, DLG_BG2);
-
+  
   // draw text (centred)
   tft.setCursor(ALERT_X + 7, ALERT_Y + 25);
   tft.setFont(FONT_DIALOG);
