@@ -63,7 +63,7 @@ bool hs_menuitem_handler(HotSpot *hs)
   }
   else
   {
-    mi_ptr->action();
+    mi_ptr->action(mi_ptr->arg);
     return false;
   }
 }
@@ -158,7 +158,8 @@ const char *mi_display(struct MenuItem *mi)
 {
   static char buffer[128];
 
-  sprintf(buffer, "mi: %p, title='%s', menu=%p, action=%p\n", mi, mi->title, mi->menu, mi->action);
+  sprintf(buffer, "mi: %p, title='%s', menu=%p, action=%p, arg=%08X\n",
+          mi, mi->title, mi->menu, mi->action, (unsigned long) mi->arg);
   
   return buffer;
 }
@@ -226,7 +227,7 @@ void menu_draw(struct Menu *menu)
     {
       break;
     }
-      
+
     int16_t x1;
     int16_t y1;
     uint16_t w;
@@ -235,12 +236,12 @@ void menu_draw(struct Menu *menu)
     tft.getTextBounds((char *) menu->items[i]->title, 1, 1, &x1, &y1, &w, &h);
 
     // write indexed item on lower row, right-justified
-    tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width-1, MENUITEM_HEIGHT, MENU_BG);
+    tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width-1, MENUITEM_HEIGHT - 1, MENU_BG);
     tft.setCursor(ts_width - w - 5, mi_y - 10);
     tft.print(menu->items[i]->title);
     mi_y += MENUITEM_HEIGHT;
   }
-
+  
   // draw the scroll widget if required
   if (menu->num_items > MAXMENUITEMROWS)
   {
@@ -285,22 +286,14 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
 
   for (int i = 0; i < max_scan; ++hs, ++i)
   {
-    DEBUG("loop: i=%d, x=%d, y=%d\n", i, x, y);
-    DEBUG("loop: limits: hs->x=%d, hs->y=%d, hs->x + hs->w=%d, hs->y + hs->h=%d\n\n",
-          hs->x, hs->y, hs->x + hs->w, hs->y + hs->h);
-    
     if ((x >= hs->x) && (x < hs->x + hs->w) &&
         (y >= hs->y) && (y < hs->y + hs->h))
     {
       int ndx = i + menu->top;   // index of actual menuitem/action
-      DEBUG("***** hit hs @ i=%d, is_menu=%s\n", i, (is_menu) ? "true" : "false");
-      
-      
+            
       if (is_menu)
       { // we have a menu
         struct MenuItem *mi = menu->items[ndx];
-        DEBUG("***** hit hs @ i=%d, ndx=%d, is_menu=%s\n", i, ndx, (is_menu) ? "true" : "false");
-        menu_dump("Menu:", menu);
 
         if (mi->menu)
         {
@@ -311,10 +304,12 @@ bool menu_handletouch(int x, int y, HotSpot *hs, int hslen, bool is_menu, struct
         }
         else
         {
-          mi->action();
-          menu_draw(menu);
-          DEBUG("<<<<<<<<<<<<<<< menu_handletouch: action, returning 'true'\n");
-          return true;
+          DEBUG("menu_handletouch: calling mi->action('%08x')\n", (unsigned long) mi->arg);
+          bool result = mi->action(mi->arg);
+          //menu_draw(menu);
+          DEBUG("<<<<<<<<<<<<<<< menu_handletouch: action, returning '%s'\n",
+                (result) ? "true" : "false");
+          return result;
         }
       }
       else

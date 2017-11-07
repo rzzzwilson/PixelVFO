@@ -17,13 +17,13 @@
 // definitions for all action handlers.
 //-----------------------------------------------
 
-bool action_no_reset(void);
-bool action_reset(void);
-bool action_brightness(void);
-bool action_calibrate(void);
-bool action_slot_save(void);
-bool action_slot_restore(void);
-bool action_slot_delete(void);
+bool action_no_reset(void *);
+bool action_reset(void *);
+bool action_brightness(void *);
+bool action_calibrate(void *);
+bool action_slot_save(void *);
+bool action_slot_restore(void *);
+bool action_slot_delete(void *);
 //bool hs_creditsback_handler(HotSpot *hs, void *ignore);
 
 #endif

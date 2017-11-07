@@ -400,7 +400,7 @@ static HotSpot hs_credits[] =
 
 #define CreditsHSLen   ALEN(hs_credits)
 
-bool credits_action(void)
+bool credits_action(void *ignore)
 {
   // draw the credits screen
   tft.fillRect(0, 0, tft.width(), tft.height(), CREDIT_BG);
@@ -440,30 +440,30 @@ bool credits_action(void)
 // Define the PixelVFO menu system
 //-----------------------------------------------
 
-struct MenuItem mi_reset_no = {"No", NULL, &action_no_reset};
-struct MenuItem mi_reset_yes = {"Yes", NULL, &action_reset};
+struct MenuItem mi_reset_no = {"No", NULL, &action_no_reset, NULL};
+struct MenuItem mi_reset_yes = {"Yes", NULL, &action_reset, NULL};
 struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
 struct Menu reset_menu = {"Reset all", 0, ALEN(mia_reset), mia_reset};          
 
-struct MenuItem mi_brightness = {"Brightness", NULL, &action_brightness};
-struct MenuItem mi_calibrate = {"Calibrate", NULL, &action_calibrate};
+struct MenuItem mi_brightness = {"Brightness", NULL, &action_brightness, NULL};
+struct MenuItem mi_calibrate = {"Calibrate", NULL, &action_calibrate, NULL};
 struct MenuItem *mia_settings[] = {&mi_brightness, &mi_calibrate};
 struct Menu settings_menu = {"Settings", 0, ALEN(mia_settings), mia_settings};
 
-struct MenuItem mi_saveslot = {"Save slot", NULL, &action_slot_save};
-struct MenuItem mi_restoreslot = {"Restore slot", NULL, &action_slot_restore};
-struct MenuItem mi_deleteslot = {"Delete slot", NULL, &action_slot_delete};
+struct MenuItem mi_saveslot = {"Save slot", NULL, &action_slot_save, NULL};
+struct MenuItem mi_restoreslot = {"Restore slot", NULL, &action_slot_restore, NULL};
+struct MenuItem mi_deleteslot = {"Delete slot", NULL, &action_slot_delete, NULL};
 struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
 struct Menu slots_menu = {"Slots", 0, ALEN(mia_slots), mia_slots};
 
-struct MenuItem mi_slots = {"Slots", &slots_menu, NULL};
-struct MenuItem mi_settings = {"Settings", &settings_menu, NULL};
-struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL};
-struct MenuItem mi_credits = {"Credits", NULL, &credits_action};
+struct MenuItem mi_slots = {"Slots", &slots_menu, NULL, NULL};
+struct MenuItem mi_settings = {"Settings", &settings_menu, NULL, NULL};
+struct MenuItem mi_reset = {"Reset all", &reset_menu, NULL, NULL};
+struct MenuItem mi_credits = {"Credits", NULL, &credits_action, NULL};
 #if 1
-struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action};
-struct MenuItem mi_credits3 = {"Credits3", NULL, &credits_action};
-struct MenuItem mi_credits4 = {"Credits4", NULL, &credits_action};
+struct MenuItem mi_credits2 = {"Credits2", NULL, &credits_action, NULL};
+struct MenuItem mi_credits3 = {"Credits3", NULL, &credits_action, NULL};
+struct MenuItem mi_credits4 = {"Credits4", NULL, &credits_action, NULL};
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, &mi_credits2, &mi_credits3, &mi_credits4};
 #else
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};

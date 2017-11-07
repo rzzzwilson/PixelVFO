@@ -14,7 +14,7 @@
 
 
 // handler for selection of an item
-typedef bool (*ItemAction)(void);
+typedef bool (*ItemAction)(void *arg);
 
 // structure defining a menuitem
 struct MenuItem
@@ -22,6 +22,7 @@ struct MenuItem
   const char *title;          // menu item display text
   struct Menu *menu;          // if not NULL, submenu to pass to show_menu()
   ItemAction action;          // if not NULL, address of action function
+  void *arg;                  // arg for the action function
 };
 
 // structure defining a menu

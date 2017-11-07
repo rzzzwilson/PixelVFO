@@ -17,7 +17,7 @@
 // Reset - no action.
 //-----------------------------------------------
 
-bool action_no_reset(void)
+bool action_no_reset(void *ignore)
 {
   DEBUG("action_no_reset: called\n");
   util_alert("Test of alert.");
@@ -28,7 +28,7 @@ bool action_no_reset(void)
 // Reset - perform action.
 //-----------------------------------------------
 
-bool action_reset(void)
+bool action_reset(void *ignore)
 {
   DEBUG("action_reset: called\n");
   bool result = util_confirm("Test of confirm.");
@@ -40,7 +40,7 @@ bool action_reset(void)
 // Settings - adjust brightness.
 //-----------------------------------------------
 
-bool action_brightness(void)
+bool action_brightness(void *ignore)
 {
   DEBUG("action_brightness: called\n");
   return false;   // don't redraw screen
@@ -50,7 +50,7 @@ bool action_brightness(void)
 // Settings - calibrate the DDS-60 chip.
 //-----------------------------------------------
 
-bool action_calibrate(void)
+bool action_calibrate(void *ignore)
 {
   DEBUG("action_calibrate: called\n");
   return false;   // don't redraw screen
@@ -74,7 +74,7 @@ bool act_menuslot_handler(HotSpot *hs, void *arg)
   }
   else
   {
-    mi_ptr->action();
+    mi_ptr->action(mi_ptr->arg);
     result = false;
   }
   DEBUG("<<<<< act_menuslot_handler: returning '%s'\n",
@@ -96,74 +96,25 @@ bool act_scroll_down(HotSpot *hs, void *arg)
 // Slots
 //***********************************************
 
-bool act_save_slot(int slot_num)
+bool act_save_slot(void *arg)
 {
+  int slot_num = (int) arg;
   DEBUG("act_save_slot: called, slot_num=%d, returning 'true'\n", slot_num);
   slot_put(slot_num, frequency, freq_digit_select);
   return true;
 }
 
-bool act_save_slot0(void)
-{
-  return act_save_slot(0);
-}
-
-bool act_save_slot1(void)
-{
-  return act_save_slot(1);
-}
-
-bool act_save_slot2(void)
-{
-  return act_save_slot(2);
-}
-
-bool act_save_slot3(void)
-{
-  return act_save_slot(3);
-}
-
-bool act_save_slot4(void)
-{
-  return act_save_slot(4);
-}
-
-bool act_save_slot5(void)
-{
-  return act_save_slot(5);
-}
-
-bool act_save_slot6(void)
-{
-  return act_save_slot(6);
-}
-
-bool act_save_slot7(void)
-{
-  return act_save_slot(7);
-}
-
-bool act_save_slot8(void)
-{
-  return act_save_slot(8);
-}
-
-bool act_save_slot9(void)
-{
-  return act_save_slot(9);
-}
-
 // slots menu - menu and menuitem titles and menuitem action value filled in dynamically
-struct MenuItem act_slot0 = {NULL, NULL, act_save_slot0};
-struct MenuItem act_slot1 = {NULL, NULL, act_save_slot1};
-struct MenuItem act_slot2 = {NULL, NULL, act_save_slot2};
-struct MenuItem act_slot3 = {NULL, NULL, act_save_slot3};
-struct MenuItem act_slot4 = {NULL, NULL, act_save_slot4};
-struct MenuItem act_slot5 = {NULL, NULL, act_save_slot5};
-struct MenuItem act_slot6 = {NULL, NULL, act_save_slot6};
-struct MenuItem act_slot7 = {NULL, NULL, act_save_slot7};
-struct MenuItem act_slot8 = {NULL, NULL, act_save_slot8};
-struct MenuItem act_slot9 = {NULL, NULL, act_save_slot9};
+struct MenuItem act_slot0 = {NULL, NULL, act_save_slot, (void *) 0};
+struct MenuItem act_slot1 = {NULL, NULL, act_save_slot, (void *) 1};
+struct MenuItem act_slot2 = {NULL, NULL, act_save_slot, (void *) 2};
+struct MenuItem act_slot3 = {NULL, NULL, act_save_slot, (void *) 3};
+struct MenuItem act_slot4 = {NULL, NULL, act_save_slot, (void *) 4};
+struct MenuItem act_slot5 = {NULL, NULL, act_save_slot, (void *) 5};
+struct MenuItem act_slot6 = {NULL, NULL, act_save_slot, (void *) 6};
+struct MenuItem act_slot7 = {NULL, NULL, act_save_slot, (void *) 7};
+struct MenuItem act_slot8 = {NULL, NULL, act_save_slot, (void *) 8};
+struct MenuItem act_slot9 = {NULL, NULL, act_save_slot, (void *) 9};
 
 struct MenuItem *mia_f_slots[] = {
                                   &act_slot0, &act_slot1, &act_slot2, &act_slot3, &act_slot4,
@@ -216,7 +167,7 @@ void slots_populate(void)
 // Slots - save frequency to a slot.
 //-----------------------------------------------
 
-bool action_slot_save(void)
+bool action_slot_save(void *ignore)
 {
   DEBUG("action_slot_save: called\n");
 
@@ -235,7 +186,7 @@ bool action_slot_save(void)
 // Slots - restore frequency from a slot.
 //-----------------------------------------------
 
-bool action_slot_restore(void)
+bool action_slot_restore(void *ignore)
 {
   DEBUG("action_slot_restore: called\n");
   return false;   // don't redraw screen
@@ -245,7 +196,7 @@ bool action_slot_restore(void)
 // Slots - delete contents in a slot.
 //-----------------------------------------------
 
-bool action_slot_delete(void)
+bool action_slot_delete(void *ignore)
 {
   DEBUG("action_slot_delete: called\n");
   return false;   // don't redraw screen
