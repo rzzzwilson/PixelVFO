@@ -121,7 +121,7 @@ struct MenuItem *mia_f_slots[] = {
                                   &act_slot5, &act_slot6, &act_slot7, &act_slot8, &act_slot9,
                                  };
 
-struct Menu menu_slots = {"Slots", 0, ALEN(mia_f_slots), mia_f_slots};
+struct Menu menu_slots = {"Save slot", 0, ALEN(mia_f_slots), mia_f_slots};
 
 //-----------------------------------------------
 // Populate the slots menu above with data about the saved slots
@@ -140,7 +140,13 @@ void slots_populate(void)
   for (unsigned int i = 0; i < ALEN(mia_f_slots); ++i)
   {
     MenuItem *mi_ptr = mia_f_slots[i];
-    slot_get(address, frequency, offset);
+    if (i == 1)
+    {
+      frequency = 12345678;
+      offset = 0;
+    }
+    else
+      slot_get(address, frequency, offset);
 
     // if no slot display buffer, create it
     if (mi_ptr->title == NULL)
@@ -155,7 +161,7 @@ void slots_populate(void)
     }
     else
     {
-      sprintf((char *) mi_ptr->title, "%d:           ", i);
+      sprintf((char *) mi_ptr->title, "%d:            ", i);
     }
 
     // move to next slot address

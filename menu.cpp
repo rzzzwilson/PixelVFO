@@ -159,7 +159,7 @@ const char *mi_display(struct MenuItem *mi)
   static char buffer[128];
 
   sprintf(buffer, "mi: %p, title='%s', menu=%p, action=%p, arg=%08X\n",
-          mi, mi->title, mi->menu, mi->action, (unsigned long) mi->arg);
+          mi, mi->title, mi->menu, mi->action, (unsigned int) mi->arg);
   
   return buffer;
 }
