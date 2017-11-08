@@ -443,18 +443,18 @@ bool credits_action(void *ignore)
 struct MenuItem mi_reset_no = {"No", NULL, &action_no_reset, NULL};
 struct MenuItem mi_reset_yes = {"Yes", NULL, &action_reset, NULL};
 struct MenuItem *mia_reset[] = {&mi_reset_no, &mi_reset_yes};
-struct Menu reset_menu = {"Reset all", 0, ALEN(mia_reset), mia_reset};          
+struct Menu reset_menu = {"Reset all", 0, ALEN(mia_reset), mia_reset, false};          
 
 struct MenuItem mi_brightness = {"Brightness", NULL, &action_brightness, NULL};
 struct MenuItem mi_calibrate = {"Calibrate", NULL, &action_calibrate, NULL};
 struct MenuItem *mia_settings[] = {&mi_brightness, &mi_calibrate};
-struct Menu settings_menu = {"Settings", 0, ALEN(mia_settings), mia_settings};
+struct Menu settings_menu = {"Settings", 0, ALEN(mia_settings), mia_settings, false};
 
 struct MenuItem mi_saveslot = {"Save slot", NULL, &action_slot_save, NULL};
 struct MenuItem mi_restoreslot = {"Restore slot", NULL, &action_slot_restore, NULL};
 struct MenuItem mi_deleteslot = {"Delete slot", NULL, &action_slot_delete, NULL};
 struct MenuItem *mia_slots[] = {&mi_saveslot, &mi_restoreslot, &mi_deleteslot};
-struct Menu slots_menu = {"Slots", 0, ALEN(mia_slots), mia_slots};
+struct Menu slots_menu = {"Slots", 0, ALEN(mia_slots), mia_slots, false};
 
 struct MenuItem mi_slots = {"Slots", &slots_menu, NULL, NULL};
 struct MenuItem mi_settings = {"Settings", &settings_menu, NULL, NULL};
@@ -468,7 +468,7 @@ struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits, 
 #else
 struct MenuItem *mia_main[] = {&mi_slots, &mi_settings, &mi_reset, &mi_credits};
 #endif
-struct Menu menu_main = {"Menu", 0, ALEN(mia_main), mia_main};
+struct Menu menu_main = {"Menu", 0, ALEN(mia_main), mia_main, false};
 
 //////////////////////////////////////////////////////////////////////////////
 // Code to handle the 'online' and 'menu' buttons.

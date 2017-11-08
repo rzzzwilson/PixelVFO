@@ -7,7 +7,6 @@
 #include <Adafruit_ILI9341.h>
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeSansBold18pt7b.h>
-#include <Fonts/FreeMonoBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 
@@ -46,10 +45,8 @@ typedef int SelOffset;
 #define DEPTH_FREQ_DISPLAY    50    // depth of frequency display bar
 #define BUTTON_RADIUS         5
 #define FONT_BUTTON           (&FreeSansBold12pt7b) // font for button labels
-//#define FONT_MENU             (&FreeSansBold18pt7b) // font for menuitems
-#define FONT_MENU             (&FreeMonoBold18pt7b) // font for menuitems
-//#define FONT_MENUITEM         (&FreeSansBold12pt7b) // font for menuitems
-#define FONT_MENUITEM         (&FreeMonoBold18pt7b) // font for menuitems
+#define FONT_MENU             (&FreeSansBold18pt7b) // font for menuitems
+#define FONT_MENUITEM         (&FreeSansBold12pt7b) // font for menuitems
 #define FONT_ABORT            (&FreeSansBold12pt7b) // font for abort() screen
 
 #define FONT_DIALOG           (&FreeSansBold9pt7b)  // font for dialog message text

@@ -32,12 +32,14 @@ struct Menu
   int top;                    // index of top displayed item
   int num_items;              // number of items in the array below
   struct MenuItem **items;    // array of pointers to MenuItem data
+  bool indexed;               // 'true' if menu is indexed
 };
 
 #define MENU_FG             ILI9341_BLACK
 #define MENU_BG             ILI9341_GREEN
 #define MENUITEM_HEIGHT     38
 #define MAXMENUITEMROWS     5
+#define INDEX_COLUMN        30
 
 
 

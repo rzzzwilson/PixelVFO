@@ -121,15 +121,16 @@ struct MenuItem *mia_f_slots[] = {
                                   &act_slot5, &act_slot6, &act_slot7, &act_slot8, &act_slot9,
                                  };
 
-struct Menu menu_slots = {"Save slot", 0, ALEN(mia_f_slots), mia_f_slots};
+struct Menu menu_slots = {NULL, 0, ALEN(mia_f_slots), mia_f_slots, true};
 
 //-----------------------------------------------
 // Populate the slots menu above with data about the saved slots
 //-----------------------------------------------
 
+#define SlotTitleLength     (15 + 1)    // +1 for NULL byte end-of-string
 #define SlotBufferLength    (13 + 1)    // +1 for NULL byte end-of-string
 
-void slots_populate(void)
+void slots_populate(const char *menu_title)
 {
   DEBUG("slots_populate: called\n");
   
@@ -137,6 +138,13 @@ void slots_populate(void)
   SelOffset offset;
   int address = SaveFreqBase;
 
+  // if no menu title buffer, create it
+  if (menu_slots.title == NULL)
+  {
+    menu_slots.title = (const char *) malloc(SlotTitleLength);
+  }
+  strcpy((char *) menu_slots.title, (const char *) menu_title);
+  
   for (unsigned int i = 0; i < ALEN(mia_f_slots); ++i)
   {
     MenuItem *mi_ptr = mia_f_slots[i];
@@ -157,11 +165,11 @@ void slots_populate(void)
     // create slot menuitem title text
     if (frequency > 0)
     {
-      sprintf((char *) mi_ptr->title, "%d: %8ldHz", i, frequency);
+      sprintf((char *) mi_ptr->title, "%8ldHz", frequency);
     }
     else
     {
-      sprintf((char *) mi_ptr->title, "%d:            ", i);
+      sprintf((char *) mi_ptr->title, "          ");
     }
 
     // move to next slot address
@@ -178,11 +186,12 @@ bool action_slot_save(void *ignore)
   DEBUG("action_slot_save: called\n");
 
   // populate the slot menuitems with current saved slot data
-  slots_populate();
-  menu_dump("Populated menu", &menu_slots);
+  slots_populate("Save slot");
 
   // show the menu
   menu_show(&menu_slots);
+
+  // event loop here
   
   DEBUG("action_slot_save: returning 'false'\n");
   return false;   // don't redraw screen
@@ -194,6 +203,14 @@ bool action_slot_save(void *ignore)
 
 bool action_slot_restore(void *ignore)
 {
+  // populate the slot menuitems with current saved slot data
+  slots_populate("Restore slot");
+
+  // show the menu
+  menu_show(&menu_slots);
+
+  // event loop here
+  
   DEBUG("action_slot_restore: called\n");
   return false;   // don't redraw screen
 }
@@ -204,6 +221,14 @@ bool action_slot_restore(void *ignore)
 
 bool action_slot_delete(void *ignore)
 {
+  // populate the slot menuitems with current saved slot data
+  slots_populate("Delete slot");
+
+  // show the menu
+  menu_show(&menu_slots);
+
+  // event loop here
+  
   DEBUG("action_slot_delete: called\n");
   return false;   // don't redraw screen
 }

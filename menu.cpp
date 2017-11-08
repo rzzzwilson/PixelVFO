@@ -176,7 +176,8 @@ void menu_dump(char const *msg, Menu *menu)
 {
   Serial.printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   Serial.printf("Menu: %s\n", msg);
-  Serial.printf("  title=%s, top=%d, num items=%d\n", menu->title, menu->top, menu->num_items);
+  Serial.printf("  title=%s, top=%d, num items=%d, indexed=%s\n",
+                menu->title, menu->top, menu->num_items, (menu->indexed) ? "true" : "false");
 
   for (int i = 0; i < menu->num_items; ++i)
   {
@@ -239,6 +240,18 @@ void menu_draw(struct Menu *menu)
     tft.fillRect(0, mi_y - MENUITEM_HEIGHT, ts_width-1, MENUITEM_HEIGHT - 1, MENU_BG);
     tft.setCursor(ts_width - w - 5, mi_y - 10);
     tft.print(menu->items[i]->title);
+
+    // if we are indexing, write index text in correct column
+    if (menu->indexed)
+    {
+      char buff[16];
+
+      sprintf(buff, "%d:", i);
+      //tft.getTextBounds(buff, 1, 1, &x1, &y1, &w, &h);
+      tft.setCursor(INDEX_COLUMN, mi_y - 10);
+      tft.print(buff);
+    }
+    
     mi_y += MENUITEM_HEIGHT;
   }
   
